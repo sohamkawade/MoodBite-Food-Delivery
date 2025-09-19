@@ -23,6 +23,7 @@ const analyticsRoutes = require('./routes/analyticsRoutes');
 const deliveryAuthRoutes = require('./routes/deliveryAuthRoutes');
 const restaurantAuthRoutes = require('./routes/restaurantAuthRoutes');
 const ratingRoutes = require('./routes/ratingRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
 
 app.use(
   helmet({
@@ -91,6 +92,7 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/delivery', deliveryAuthRoutes);
 app.use('/api/restaurant', restaurantAuthRoutes);
 app.use('/api/ratings', ratingRoutes);
+app.use('/api/payments', paymentRoutes);
 
 
 app.use(express.static(path.join(__dirname, "../frontend/dist")));

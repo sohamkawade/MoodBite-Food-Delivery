@@ -9,6 +9,7 @@ import Login from "./pages/user/Login";
 import Signup from "./pages/user/Signup";
 import Profile from "./pages/user/Profile";
 import Orders from "./pages/user/Orders";
+import PaymentTest from "./pages/user/PaymentTest";
 import ForgotPassword from "./pages/user/ForgotPassword";
 import RestaurantRegister from "./pages/restaurant/RestaurantRegister";
 import RestaurantLogin from "./pages/restaurant/Login";
@@ -73,6 +74,11 @@ function AppContent() {
         <Route path="/orders" element={
           <ProtectedRoute>
             <Orders />
+          </ProtectedRoute>
+        } />
+        <Route path="/payment-test" element={
+          <ProtectedRoute>
+            <PaymentTest />
           </ProtectedRoute>
         } />
         <Route path="/profile" element={

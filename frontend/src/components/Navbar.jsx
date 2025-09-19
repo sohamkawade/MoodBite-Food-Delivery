@@ -422,6 +422,14 @@ const Navbar = () => {
                       <MdShoppingCart size={16} className="mr-3" />
                       My Orders
                     </Link>
+                    <Link
+                      to="/payment-test"
+                      onClick={() => setShowUserMenu(false)}
+                      className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    >
+                      <MdLocalOffer size={16} className="mr-3" />
+                      Payment Test
+                    </Link>
                     <div className="border-t border-gray-100 my-1"></div>
                     <button
                       onClick={async () => {

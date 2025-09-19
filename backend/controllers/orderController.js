@@ -14,27 +14,12 @@ const computeDeliveryFee = (subtotal, tax) => {
   return 0;
 };
 
-// Simple coupon evaluator (demo rules)
-const evaluateCoupon = (code, subtotal, deliveryFee) => {
-  if (!code) return { discount: 0, freeShipping: false };
-  const normalized = String(code).trim().toUpperCase();
-  if (normalized === 'SAVE10') {
-    return { discount: Math.round(subtotal * 0.10), freeShipping: false };
-  }
-  if (normalized === 'FREESHIP') {
-    return { discount: 0, freeShipping: true };
-  }
-  if (normalized === 'FLAT50' && subtotal >= 299) {
-    return { discount: 50, freeShipping: false };
-  }
-  return { discount: 0, freeShipping: false };
-};
 
 // Place order from current cart
 const placeOrder = async (req, res) => {
   try {
     const userId = req.user._id;
-    const { orderType = 'delivery', paymentMethod = 'online', deliveryAddress, alternatePhone, couponCode } = req.body || {};
+    const { orderType = 'delivery', paymentMethod = 'cash', deliveryAddress, alternatePhone, razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body || {};
 
     // Load user
     const user = await User.findById(userId);
@@ -63,11 +48,8 @@ const placeOrder = async (req, res) => {
     }, 0);
 
     const tax = subtotal * 0.08;
-    let deliveryFee = computeDeliveryFee(subtotal, tax);
-    // Apply coupon rules
-    const { discount, freeShipping } = evaluateCoupon(couponCode, subtotal, deliveryFee);
-    if (freeShipping) deliveryFee = 0;
-    const total = Math.max(0, subtotal + tax + deliveryFee - (discount || 0));
+    const deliveryFee = computeDeliveryFee(subtotal, tax);
+    const total = subtotal + tax + deliveryFee;
 
     // Build order items
     const orderItems = (cart.items || []).map(item => {
@@ -101,12 +83,37 @@ const placeOrder = async (req, res) => {
     // Normalize payment method to allowed enum
     let normalizedPaymentMethod = paymentMethod;
     if (paymentMethod === 'cod') normalizedPaymentMethod = 'cash';
-    if (paymentMethod === 'card') normalizedPaymentMethod = 'credit_card';
-    if (!['cash', 'credit_card', 'debit_card', 'upi', 'wallet', 'online'].includes(normalizedPaymentMethod)) {
-      normalizedPaymentMethod = 'online';
+    if (paymentMethod === 'razorpay') normalizedPaymentMethod = 'online';
+    if (!['cash', 'online'].includes(normalizedPaymentMethod)) {
+      normalizedPaymentMethod = 'cash';
     }
 
-    // For demo: mark COD as pending, others completed
+    // Verify Razorpay payment if online payment
+    if (normalizedPaymentMethod === 'online') {
+      if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Razorpay payment verification data is required for online payments' 
+        });
+      }
+
+      // Verify payment signature
+      const crypto = require('crypto');
+      const body = razorpayOrderId + "|" + razorpayPaymentId;
+      const expectedSignature = crypto
+        .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+        .update(body.toString())
+        .digest('hex');
+
+      if (expectedSignature !== razorpaySignature) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Payment verification failed' 
+        });
+      }
+    }
+
+    // Set payment status based on method
     const computedPaymentStatus = normalizedPaymentMethod === 'cash' ? 'pending' : 'completed';
 
     const order = new Order({
@@ -122,10 +129,9 @@ const placeOrder = async (req, res) => {
       subtotal,
       tax,
       deliveryFee,
-      discount: discount || 0,
+      discount: 0,
       total,
       orderTime: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }),
-      couponCode: couponCode || undefined,
       customerPhone: user.phone,
       alternatePhone: alternatePhone || undefined,
       customerName: `${user.firstName || ''} ${user.lastName || ''}`.trim(),

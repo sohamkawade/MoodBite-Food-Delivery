@@ -1011,6 +1011,25 @@ export const ratingAPI = {
   }
 };
 
+// Payment API functions
+export const paymentAPI = {
+  // Create Razorpay order
+  createRazorpayOrder: async (amount, receipt) => {
+    return apiRequest('/payments/create-order', {
+      method: 'POST',
+      body: JSON.stringify({ amount, receipt }),
+    });
+  },
+
+  // Verify Razorpay payment
+  verifyRazorpayPayment: async (razorpay_order_id, razorpay_payment_id, razorpay_signature) => {
+    return apiRequest('/payments/verify', {
+      method: 'POST',
+      body: JSON.stringify({ razorpay_order_id, razorpay_payment_id, razorpay_signature }),
+    });
+  }
+};
+
 // Health check
 export const healthCheck = async () => {
   return await apiRequest('/health');

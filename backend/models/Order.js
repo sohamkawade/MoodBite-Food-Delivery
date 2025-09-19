@@ -145,9 +145,6 @@ const orderSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Order time is required']
   },
-  couponCode: {
-    type: String
-  },
   customerPhone: {
     type: String,
     required: [true, 'Customer phone is required']

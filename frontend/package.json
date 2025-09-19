@@ -14,6 +14,7 @@
     "@lottiefiles/dotlottie-web": "^0.52.2",
     "@tailwindcss/vite": "^4.1.12",
     "axios": "^1.11.0",
+    "razorpay": "^2.9.6",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-hot-toast": "^2.4.1",
