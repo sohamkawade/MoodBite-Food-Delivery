@@ -43,3 +43,4 @@ router.post('/users/:id/suspend', authenticate, suspendUser);
 router.get('/orders', authenticate, getOrderManagement);
 
 module.exports = router;
+
