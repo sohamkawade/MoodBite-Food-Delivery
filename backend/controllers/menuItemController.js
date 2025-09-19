@@ -1,6 +1,7 @@
 const MenuItem = require('../models/MenuItem');
 const Restaurant = require('../models/Restaurant');
 const Category = require('../models/Category');
+const { processImageUrl } = require('../utils/imageUtils');
 
 // Get all menu items (admin)
 const getAllMenuItems = async (req, res) => {
@@ -10,7 +11,13 @@ const getAllMenuItems = async (req, res) => {
       .sort({ sortOrder: 1, createdAt: -1 })
       .populate({ path: 'restaurant', select: 'name' });
 
-    res.json({ success: true, data: { items } });
+    // Process image URLs for each item
+    const processedItems = items.map(item => ({
+      ...item.toObject(),
+      image: processImageUrl(item.image)
+    }));
+
+    res.json({ success: true, data: { items: processedItems } });
   } catch (error) {
     console.error('Get all menu items error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch menu items' });
@@ -68,7 +75,7 @@ const createMenuItem = async (req, res) => {
       categoryId: resolvedCategoryId,
       price,
       description,
-      image,
+      image: processImageUrl(image),
       restaurant,
       isAvailable: isAvailable !== undefined ? isAvailable : true,
       offer: offer || undefined,
@@ -161,7 +168,7 @@ const updateMenuItem = async (req, res) => {
     }
     if (price !== undefined) item.price = price;
     if (description !== undefined) item.description = description;
-    if (image !== undefined) item.image = image;
+    if (image !== undefined) item.image = processImageUrl(image);
     if (restaurant !== undefined) item.restaurant = restaurant;
     if (isAvailable !== undefined) item.isAvailable = isAvailable;
     if (isNewArrival !== undefined) item.isNewArrival = isNewArrival;

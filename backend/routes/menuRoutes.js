@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticate, authenticateAdmin } = require('../middlewares/authMiddleware');
 const { getAllMenuItems, createMenuItem, deleteMenuItem, updateMenuItem } = require('../controllers/menuItemController');
+const { processImageUrl } = require('../utils/imageUtils');
 const MenuItem = require('../models/MenuItem');
 
 router.get('/admin/items', authenticateAdmin, getAllMenuItems);
@@ -16,7 +17,14 @@ router.get('/items', async (req, res) => {
       .sort({ sortOrder: 1, createdAt: -1 })
       .limit(200)
       .populate({ path: 'restaurant', select: 'name' });
-    res.json({ success: true, data: { items } });
+    
+    // Process image URLs for each item
+    const processedItems = items.map(item => ({
+      ...item.toObject(),
+      image: processImageUrl(item.image)
+    }));
+    
+    res.json({ success: true, data: { items: processedItems } });
   } catch (e) {
     res.status(500).json({ success: false, message: 'Failed to fetch items' });
   }
@@ -32,7 +40,14 @@ router.get('/trending', async (req, res) => {
       .sort({ rating: -1, createdAt: -1 })
       .limit(20)
       .populate({ path: 'restaurant', select: 'name' });
-    res.json({ success: true, data: { items: trendingItems } });
+    
+    // Process image URLs for each item
+    const processedItems = trendingItems.map(item => ({
+      ...item.toObject(),
+      image: processImageUrl(item.image)
+    }));
+    
+    res.json({ success: true, data: { items: processedItems } });
   } catch (e) {
     res.status(500).json({ success: false, message: 'Failed to fetch trending items' });
   }
@@ -48,7 +63,14 @@ router.get('/new-arrivals', async (req, res) => {
       .sort({ rating: -1, createdAt: -1 })
       .limit(20)
       .populate({ path: 'restaurant', select: 'name' });
-    res.json({ success: true, data: { items: newArrivalItems } });
+    
+    // Process image URLs for each item
+    const processedItems = newArrivalItems.map(item => ({
+      ...item.toObject(),
+      image: processImageUrl(item.image)
+    }));
+    
+    res.json({ success: true, data: { items: processedItems } });
   } catch (e) {
     res.status(500).json({ success: false, message: 'Failed to fetch new arrival items' });
   }

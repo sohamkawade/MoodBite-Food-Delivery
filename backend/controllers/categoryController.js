@@ -1,5 +1,6 @@
 const Category = require('../models/Category');
 const MenuItem = require('../models/MenuItem');
+const { processImageUrl } = require('../utils/imageUtils');
 
 const getAllCategoriesForAdmin = async (req, res) => {
   try {
@@ -27,7 +28,7 @@ const getAllCategoriesForAdmin = async (req, res) => {
       .limit(parseInt(limit))
       .lean();
 
-    // Get item count for each category
+    // Get item count for each category and process image URLs
     await Promise.all(categories.map(async (cat) => {
       const count = await MenuItem.countDocuments({
         $or: [
@@ -36,6 +37,7 @@ const getAllCategoriesForAdmin = async (req, res) => {
         ]
       });
       cat.itemCount = count;
+      cat.image = processImageUrl(cat.image);
     }));
 
     const total = await Category.countDocuments(query);
@@ -66,7 +68,7 @@ const getCategories = async (req, res) => {
       .sort({ sortOrder: 1, name: 1 })
       .lean();
 
-    // Get item count for each category
+    // Get item count for each category and process image URLs
     await Promise.all(categories.map(async (cat) => {
       const count = await MenuItem.countDocuments({
         $or: [
@@ -75,6 +77,7 @@ const getCategories = async (req, res) => {
         ]
       });
       cat.itemCount = count;
+      cat.image = processImageUrl(cat.image);
     }));
 
     res.json({ success: true, data: { categories } });
@@ -121,7 +124,7 @@ const createCategory = async (req, res) => {
       name: name.trim(),
       slug: finalSlug,
       description: description || '',
-      image: image.trim(),
+      image: processImageUrl(image.trim()),
       sortOrder: Number(sortOrder) || 0,
       isActive: typeof isActive === 'boolean' ? isActive : true,
       isFeatured: !!isFeatured,
@@ -191,7 +194,7 @@ const updateCategory = async (req, res) => {
 
     // Update other fields
     if (description !== undefined) category.description = description;
-    if (image !== undefined) category.image = image;
+    if (image !== undefined) category.image = processImageUrl(image);
     if (sortOrder !== undefined) category.sortOrder = Number(sortOrder) || 0;
     if (isActive !== undefined) category.isActive = isActive;
     if (isFeatured !== undefined) category.isFeatured = isFeatured;
@@ -263,6 +266,7 @@ const getCategoryById = async (req, res) => {
 
     const categoryData = category.toObject();
     categoryData.itemCount = itemCount;
+    categoryData.image = processImageUrl(categoryData.image);
 
     res.json({ success: true, data: { category: categoryData } });
   } catch (error) {
@@ -283,10 +287,13 @@ const toggleCategoryStatus = async (req, res) => {
     category.updatedBy = req.user?._id;
     await category.save();
 
+    const categoryData = category.toObject();
+    categoryData.image = processImageUrl(categoryData.image);
+
     res.json({ 
       success: true, 
       message: `Category ${category.isActive ? 'activated' : 'deactivated'} successfully`,
-      data: { category } 
+      data: { category: categoryData } 
     });
   } catch (error) {
     console.error('Toggle category status error:', error);

@@ -40,7 +40,7 @@ app.use(
 
         scriptSrc: ["'self'", "'wasm-unsafe-eval'"],
         workerSrc: ["'self'", 'blob:'],
-        imgSrc: ["'self'", 'data:', 'blob:'],
+        imgSrc: ["'self'", 'data:', 'blob:', 'https:', 'http:'],
         styleSrc: ["'self'", "'unsafe-inline'"],
         frameSrc: ["'self'"]
       }
