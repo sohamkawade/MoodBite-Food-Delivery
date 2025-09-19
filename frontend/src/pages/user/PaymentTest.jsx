@@ -19,25 +19,32 @@ const PaymentTest = () => {
   }, [isUserLoggedIn, navigate]);
 
   useEffect(() => {
-    const loadRazorpay = () => {
-      // Check if Razorpay is already loaded
+    const checkRazorpay = () => {
+      // Check if Razorpay is already loaded (from HTML script tag)
       if (window.Razorpay) {
         setRazorpayLoaded(true);
         return;
       }
 
-      const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.crossOrigin = 'anonymous';
-      script.onload = () => setRazorpayLoaded(true);
-      script.onerror = (error) => {
-        console.error('Failed to load Razorpay:', error);
-        toast.error('Failed to load payment system. Please refresh the page or check your browser settings.');
-      };
-      document.head.appendChild(script);
+      // Wait a bit for the script to load from HTML
+      const checkInterval = setInterval(() => {
+        if (window.Razorpay) {
+          setRazorpayLoaded(true);
+          clearInterval(checkInterval);
+        }
+      }, 100);
+
+      // Stop checking after 10 seconds
+      setTimeout(() => {
+        clearInterval(checkInterval);
+        if (!window.Razorpay) {
+          console.error('Razorpay failed to load from HTML script tag');
+          toast.error('Payment system unavailable. Please refresh the page.');
+        }
+      }, 10000);
     };
 
-    loadRazorpay();
+    checkRazorpay();
   }, []);
 
   const handleTestPayment = async () => {
