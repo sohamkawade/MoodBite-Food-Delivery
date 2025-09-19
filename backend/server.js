@@ -24,7 +24,7 @@ const deliveryAuthRoutes = require('./routes/deliveryAuthRoutes');
 const restaurantAuthRoutes = require('./routes/restaurantAuthRoutes');
 const ratingRoutes = require('./routes/ratingRoutes');
 
-
+// Mongo connection is initialized in ./config/db (required above)
 app.use(helmet());
 
 app.use(cors({
@@ -97,20 +97,27 @@ app.use('*', (req, res) => {
   });
 });
 
-const PORT = process.env.PORT;
+const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log("MoodBite Server is running on PORT:", PORT);
-  
+});
+
+// Start background jobs only after MongoDB connection is open
+db.once('open', () => {
+  // Initial run
+  expireOnlineStatus().catch((error) => {
+    console.error('Failed to expire online status (initial):', error);
+  });
+
+  // Schedule hourly runs
   setInterval(async () => {
     try {
       await expireOnlineStatus();
     } catch (error) {
       console.error('Failed to expire online status:', error);
     }
-  }, 60 * 60 * 1000); 
-  
-  expireOnlineStatus().catch(console.error);
+  }, 60 * 60 * 1000);
 });
 
 module.exports = app;
