@@ -144,7 +144,8 @@ const restaurantSchema = new mongoose.Schema({
   },
   imageUrl: {
     type: String,
-    trim: true
+    trim: true,
+    required:true
   },
   description: {
     type: String,

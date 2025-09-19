@@ -1,4 +1,3 @@
-// const API_BASE_URL = 'http://localhost:5000/api';
 
 const API_BASE_URL = import.meta.env.PROD
   ? "https://moodbite-food-delivery.onrender.com/api"
@@ -267,27 +266,40 @@ export const adminAPI = {
   },
 
   getProfile: async () => {
-    return await adminApiRequest('/profile');
+    return await apiRequest('/admin/profile', {
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      }
+    });
   },
 
   updateProfile: async (profileData) => {
-    return await adminApiRequest('/profile', {
+    return await apiRequest('/admin/profile', {
       method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      },
       body: JSON.stringify(profileData),
     });
   },
 
   changePassword: async (passwordData) => {
-    return await adminApiRequest('/change-password', {
+    return await apiRequest('/admin/change-password', {
       method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      },
       body: JSON.stringify(passwordData),
     });
   },
 
   logout: async () => {
     try {
-      await adminApiRequest('/logout', {
+      await apiRequest('/admin/logout', {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${getAdminAuthToken()}`
+        }
       });
     } catch (error) {
     } finally {
@@ -297,27 +309,47 @@ export const adminAPI = {
   },
 
   getDashboardStats: async () => {
-    return await adminApiRequest('/dashboard/stats');
+    return await apiRequest('/admin/dashboard/stats', {
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      }
+    });
   },
 
   getRestaurantManagement: async (params = {}) => {
     const qs = new URLSearchParams(params).toString();
-    return adminApiRequest(`/restaurants${qs ? `?${qs}` : ''}`);
+    return apiRequest(`/admin/restaurants${qs ? `?${qs}` : ''}`, {
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      }
+    });
   },
 
   getDeliveryBoyManagement: async (params = {}) => {
     const qs = new URLSearchParams(params).toString();
-    return adminApiRequest(`/delivery-boys${qs ? `?${qs}` : ''}`);
+    return apiRequest(`/admin/delivery-boys${qs ? `?${qs}` : ''}`, {
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      }
+    });
   },
 
   getUserManagement: async (params = {}) => {
     const qs = new URLSearchParams(params).toString();
-    return adminApiRequest(`/users${qs ? `?${qs}` : ''}`);
+    return apiRequest(`/admin/users${qs ? `?${qs}` : ''}`, {
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      }
+    });
   },
 
   getOrderManagement: async (params = {}) => {
     const qs = new URLSearchParams(params).toString();
-    return adminApiRequest(`/orders${qs ? `?${qs}` : ''}`);
+    return apiRequest(`/admin/orders${qs ? `?${qs}` : ''}`, {
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      }
+    });
   },
 
   // Restaurant Management
@@ -330,32 +362,44 @@ export const adminAPI = {
 
   // Delivery Boy Management
   updateDeliveryBoyStatus: async (deliveryBoyId, approvalStatus) => {
-    return await adminApiRequest(`/delivery-boys/admin/${deliveryBoyId}/status`, {
+    return await apiRequest(`/delivery-boys/admin/${deliveryBoyId}/status`, {
       method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      },
       body: JSON.stringify({ approvalStatus }),
     });
   },
 
   // Forgot password
   forgotPassword: async (data) => {
-    return await adminApiRequest('/forgot-password', {
+    return await apiRequest('/admin/forgot-password', {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      },
       body: JSON.stringify(data),
     });
   },
 
   // Verify OTP
   verifyOTP: async (email, otp) => {
-    return await adminApiRequest('/verify-otp', {
+    return await apiRequest('/admin/verify-otp', {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      },
       body: JSON.stringify({ email, otp }),
     });
   },
 
   // Reset password
   resetPassword: async (email, otp, newPassword) => {
-    return await adminApiRequest('/reset-password', {
+    return await apiRequest('/admin/reset-password', {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      },
       body: JSON.stringify({ email, otp, newPassword }),
     });
   },
@@ -374,59 +418,119 @@ export const restaurantAPI = {
 
   // Get all restaurants (admin)
   getAllRestaurants: async () => {
-    return await adminApiRequest('/restaurants/admin/all');
+    return await apiRequest('/restaurants/admin/all', {
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      }
+    });
   },
 
   // Get restaurant by ID (admin)
   getRestaurantById: async (id) => {
-    return await adminApiRequest(`/restaurants/admin/${id}`);
+    return await apiRequest(`/restaurants/admin/${id}`, {
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      }
+    });
   },
 
   // Create restaurant (admin)
   createRestaurant: async (restaurantData) => {
-    return await adminApiRequest('/restaurants/admin/create', {
+    return await apiRequest('/restaurants/admin/create', {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      },
       body: JSON.stringify(restaurantData),
     });
   },
 
   // Update restaurant (admin)
   updateRestaurant: async (id, restaurantData) => {
-    return await adminApiRequest(`/restaurants/admin/${id}`, {
+    return await apiRequest(`/restaurants/admin/${id}`, {
       method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      },
       body: JSON.stringify(restaurantData),
     });
   },
 
   // Delete restaurant (admin)
   deleteRestaurant: async (id) => {
-    return await adminApiRequest(`/restaurants/admin/${id}`, {
+    return await apiRequest(`/restaurants/admin/${id}`, {
       method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      },
     });
   },
 
   // Update restaurant status (admin)
   updateRestaurantStatus: async (id, status) => {
-    return await adminApiRequest(`/restaurants/admin/${id}/status`, {
+    return await apiRequest(`/restaurants/admin/${id}/status`, {
       method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      },
       body: JSON.stringify({ status }),
     });
   },
-  listDeliveryBoys: async (id) => adminApiRequest(`/restaurants/admin/${id}/delivery-boys`),
-  assignDeliveryBoy: async (id, deliveryBoyId) => adminApiRequest(`/restaurants/admin/${id}/delivery-boys`, { method: 'POST', body: JSON.stringify({ deliveryBoyId }) }),
-  removeDeliveryBoy: async (id, riderId) => adminApiRequest(`/restaurants/admin/${id}/delivery-boys/${riderId}`, { method: 'DELETE' }),
+  listDeliveryBoys: async (id) => apiRequest(`/restaurants/admin/${id}/delivery-boys`, {
+    headers: {
+      'Authorization': `Bearer ${getAdminAuthToken()}`
+    }
+  }),
+  assignDeliveryBoy: async (id, deliveryBoyId) => apiRequest(`/restaurants/admin/${id}/delivery-boys`, { 
+    method: 'POST', 
+    headers: {
+      'Authorization': `Bearer ${getAdminAuthToken()}`
+    },
+    body: JSON.stringify({ deliveryBoyId }) 
+  }),
+  removeDeliveryBoy: async (id, riderId) => apiRequest(`/restaurants/admin/${id}/delivery-boys/${riderId}`, { 
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${getAdminAuthToken()}`
+    }
+  }),
 };
 
 export const menuAPI = {
-  getAllItems: async () => adminApiRequest('/menu/admin/items'),
+  getAllItems: async () => apiRequest('/menu/admin/items', {
+    headers: {
+      'Authorization': `Bearer ${getAdminAuthToken()}`
+    }
+  }),
   getPublicItems: async () => apiRequest('/menu/items'),
   getTrendingItems: async () => apiRequest('/menu/trending'),
   getNewArrivalItems: async () => apiRequest('/menu/new-arrivals'),
-  createItem: async (data) => adminApiRequest('/menu/admin/items', { method: 'POST', body: JSON.stringify(data) }),
-  updateItem: async (id, data) => adminApiRequest(`/menu/admin/items/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteItem: async (id) => adminApiRequest(`/menu/admin/items/${id}`, { method: 'DELETE' }),
+  createItem: async (data) => apiRequest('/menu/admin/items', { 
+    method: 'POST', 
+    headers: {
+      'Authorization': `Bearer ${getAdminAuthToken()}`
+    },
+    body: JSON.stringify(data) 
+  }),
+  updateItem: async (id, data) => apiRequest(`/menu/admin/items/${id}`, { 
+    method: 'PUT', 
+    headers: {
+      'Authorization': `Bearer ${getAdminAuthToken()}`
+    },
+    body: JSON.stringify(data) 
+  }),
+  deleteItem: async (id) => apiRequest(`/menu/admin/items/${id}`, { 
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${getAdminAuthToken()}`
+    }
+  }),
   // Restaurant-scoped helpers
-  getAllCategories: async () => adminApiRequest('/categories/admin'),
+  getAllCategories: async () => apiRequest('/categories/admin', {
+    headers: {
+      'Authorization': `Bearer ${getAdminAuthToken()}`
+    }
+  }),
 };
 
 // Category API functions
@@ -444,36 +548,52 @@ export const categoryAPI = {
   // Admin: Get all categories with pagination and filtering
   getAllForAdmin: async (params = {}) => {
     const qs = new URLSearchParams(params).toString();
-    return adminApiRequest(`/categories/admin/all${qs ? `?${qs}` : ''}`);
+    return apiRequest(`/categories/admin/all${qs ? `?${qs}` : ''}`, {
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      }
+    });
   },
 
   // Admin: Create new category
   create: async (categoryData) => {
-    return await adminApiRequest('/categories/admin', {
+    return await apiRequest('/categories/admin', {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      },
       body: JSON.stringify(categoryData),
     });
   },
 
   // Admin: Update category
   update: async (id, categoryData) => {
-    return await adminApiRequest(`/categories/admin/${id}`, {
+    return await apiRequest(`/categories/admin/${id}`, {
       method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      },
       body: JSON.stringify(categoryData),
     });
   },
 
   // Admin: Delete category
   delete: async (id) => {
-    return await adminApiRequest(`/categories/admin/${id}`, {
+    return await apiRequest(`/categories/admin/${id}`, {
       method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      },
     });
   },
 
   // Admin: Toggle category status
   toggleStatus: async (id) => {
-    return await adminApiRequest(`/categories/admin/${id}/status`, {
+    return await apiRequest(`/categories/admin/${id}/status`, {
       method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      },
     });
   }
 };
@@ -527,23 +647,76 @@ export const ordersAPI = {
   // Admin
   adminList: async (params = {}) => {
     const qs = new URLSearchParams(params).toString();
-    return adminApiRequest(`/orders/admin/all${qs ? `?${qs}` : ''}`);
+    return apiRequest(`/orders/admin/all${qs ? `?${qs}` : ''}`, {
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      }
+    });
   },
-  adminUpdate: async (id, data) => adminApiRequest(`/orders/admin/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  adminAssignDelivery: async (id, deliveryBoyId) => adminApiRequest(`/orders/admin/${id}/assign-delivery`, { method: 'POST', body: JSON.stringify({ deliveryBoyId }) }),
-  adminAutoAssign: async (id) => adminApiRequest(`/orders/admin/${id}/auto-assign`, { method: 'POST' }),
+  adminUpdate: async (id, data) => apiRequest(`/orders/admin/${id}`, { 
+    method: 'PUT', 
+    headers: {
+      'Authorization': `Bearer ${getAdminAuthToken()}`
+    },
+    body: JSON.stringify(data) 
+  }),
+  adminAssignDelivery: async (id, deliveryBoyId) => apiRequest(`/orders/admin/${id}/assign-delivery`, { 
+    method: 'POST', 
+    headers: {
+      'Authorization': `Bearer ${getAdminAuthToken()}`
+    },
+    body: JSON.stringify({ deliveryBoyId }) 
+  }),
+  adminAutoAssign: async (id) => apiRequest(`/orders/admin/${id}/auto-assign`, { 
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${getAdminAuthToken()}`
+    }
+  }),
 };
 
 export const deliveryBoysAPI = {
   list: async (params = {}) => {
     const qs = new URLSearchParams(params).toString();
-    return adminApiRequest(`/delivery-boys/admin${qs ? `?${qs}` : ''}`);
+    return apiRequest(`/delivery-boys/admin${qs ? `?${qs}` : ''}`, {
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      }
+    });
   },
-  create: async (data) => adminApiRequest('/delivery-boys/admin', { method: 'POST', body: JSON.stringify(data) }),
-  update: async (id, data) => adminApiRequest(`/delivery-boys/admin/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  remove: async (id) => adminApiRequest(`/delivery-boys/admin/${id}`, { method: 'DELETE' }),
-  approve: async (id) => adminApiRequest(`/delivery-boys/admin/${id}/approve`, { method: 'POST' }),
-  reject: async (id, reason) => adminApiRequest(`/delivery-boys/admin/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  create: async (data) => apiRequest('/delivery-boys/admin', { 
+    method: 'POST', 
+    headers: {
+      'Authorization': `Bearer ${getAdminAuthToken()}`
+    },
+    body: JSON.stringify(data) 
+  }),
+  update: async (id, data) => apiRequest(`/delivery-boys/admin/${id}`, { 
+    method: 'PUT', 
+    headers: {
+      'Authorization': `Bearer ${getAdminAuthToken()}`
+    },
+    body: JSON.stringify(data) 
+  }),
+  remove: async (id) => apiRequest(`/delivery-boys/admin/${id}`, { 
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${getAdminAuthToken()}`
+    }
+  }),
+  approve: async (id) => apiRequest(`/delivery-boys/admin/${id}/approve`, { 
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${getAdminAuthToken()}`
+    }
+  }),
+  reject: async (id, reason) => apiRequest(`/delivery-boys/admin/${id}/reject`, { 
+    method: 'POST', 
+    headers: {
+      'Authorization': `Bearer ${getAdminAuthToken()}`
+    },
+    body: JSON.stringify({ reason }) 
+  }),
   
   // Online/Offline status management
   goOnline: async (id, duration = 8) => apiRequest(`/delivery-boys/${id}/online`, { method: 'POST', body: JSON.stringify({ duration }) }),
@@ -555,13 +728,32 @@ export const deliveryBoysAPI = {
 };
 
 export const usersAPI = {
-  getAll: async () => adminApiRequest('/users'),
-  update: async (id, data) => adminApiRequest(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  suspend: async (id) => adminApiRequest(`/users/${id}/suspend`, { method: 'POST' }),
+  getAll: async () => apiRequest('/users/admin', {
+    headers: {
+      'Authorization': `Bearer ${getAdminAuthToken()}`
+    }
+  }),
+  update: async (id, data) => apiRequest(`/users/admin/${id}`, { 
+    method: 'PUT', 
+    headers: {
+      'Authorization': `Bearer ${getAdminAuthToken()}`
+    },
+    body: JSON.stringify(data) 
+  }),
+  suspend: async (id) => apiRequest(`/users/admin/${id}/suspend`, { 
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${getAdminAuthToken()}`
+    }
+  }),
 };
 
 export const analyticsAPI = {
-  summary: async () => adminApiRequest('/analytics/summary')
+  summary: async () => apiRequest('/analytics/summary', {
+    headers: {
+      'Authorization': `Bearer ${getAdminAuthToken()}`
+    }
+  })
 };
 
 

@@ -41,7 +41,7 @@ function AppContent() {
   const isRestaurantAuthPage = location.pathname === '/restaurant/login' || location.pathname === '/restaurant/register' || location.pathname === '/restaurant/forgot-password';
   const isUserAuthPage = location.pathname === '/login' || location.pathname === '/signup' || location.pathname === '/forgot-password';
   const isAdminAuthPage = location.pathname === '/admin/login' || location.pathname === '/admin/signup' || location.pathname === '/admin/forgot-password';
-  const showNavbar = (!isDeliveryPage && !isRestaurantPage && !isAdminPage) || isDeliveryAuthPage || isRestaurantAuthPage || isUserAuthPage || isAdminAuthPage;
+  const showNavbar = (!isDeliveryPage && !isRestaurantPage) || isDeliveryAuthPage || isRestaurantAuthPage || isUserAuthPage || isAdminAuthPage;
   
   return (
     <div className="App">

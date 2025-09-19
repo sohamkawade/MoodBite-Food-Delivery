@@ -24,15 +24,12 @@ const deliveryAuthRoutes = require('./routes/deliveryAuthRoutes');
 const restaurantAuthRoutes = require('./routes/restaurantAuthRoutes');
 const ratingRoutes = require('./routes/ratingRoutes');
 
-// Mongo connection is initialized in ./config/db (required above)
 app.use(
   helmet({
-    // Some browsers require disabling COEP for third-party WASM/CDN usage
     crossOriginEmbedderPolicy: false,
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        // Allow API calls and WASM fetches to your backend and the Lottie CDNs
         connectSrc: [
           "'self'",
           'http://localhost:5000',
@@ -40,8 +37,7 @@ app.use(
           'https://cdn.jsdelivr.net',
           'https://unpkg.com'
         ],
-        // Enable WASM compilation in modern browsers while keeping eval disabled
-        // Note: 'wasm-unsafe-eval' is supported by Chromium-based browsers
+
         scriptSrc: ["'self'", "'wasm-unsafe-eval'"],
         workerSrc: ["'self'", 'blob:'],
         imgSrc: ["'self'", 'data:', 'blob:'],
@@ -53,7 +49,7 @@ app.use(
 );
 
 app.use(cors({
-  origin: [process.env.CORS_ORIGIN, 'http://localhost:5173'],
+  origin: process.env.CORS_ORIGIN,
   credentials: true
 }));
 
@@ -97,13 +93,11 @@ app.use('/api/restaurant', restaurantAuthRoutes);
 app.use('/api/ratings', ratingRoutes);
 
 
-// --------------------------------------------------------
 app.use(express.static(path.join(__dirname, "../frontend/dist")));
 
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "../frontend/dist/index.html"));
 });
-// --------------------------------------------------------
 
 
 app.use((err, req, res, next) => {
@@ -128,14 +122,11 @@ app.listen(PORT, () => {
   console.log("MoodBite Server is running on PORT:", PORT);
 });
 
-// Start background jobs only after MongoDB connection is open
 db.once('open', () => {
-  // Initial run
   expireOnlineStatus().catch((error) => {
     console.error('Failed to expire online status (initial):', error);
   });
 
-  // Schedule hourly runs
   setInterval(async () => {
     try {
       await expireOnlineStatus();

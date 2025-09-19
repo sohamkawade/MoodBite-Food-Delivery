@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { menuAPI, cartAPI } from "../../services/api";
+import { useUserAuth } from "../../context/UserAuthContext";
 import toast from "react-hot-toast";
 import {
   MdStar,
@@ -10,6 +11,7 @@ import {
 } from "react-icons/md";
 
 const Offers = () => {
+  const { isUserLoggedIn } = useUserAuth();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [favorites, setFavorites] = useState(() => {
@@ -76,6 +78,17 @@ const Offers = () => {
 
   // Cart management functions (backend)
   const addToCart = async (itemId) => {
+    if (!isUserLoggedIn) {
+      toast.error("Please login to add items to cart", {
+        duration: 3000,
+        style: {
+          background: '#dc2626',
+          color: '#fff',
+        },
+      });
+      return;
+    }
+
     try {
       const it = items.find(x => x.id === itemId);
       const response = await cartAPI.addToCart({ menuItemId: itemId, quantity: 1, restaurantId: it && it.restaurantId });

@@ -263,7 +263,6 @@ const Navbar = () => {
               <>
                 <NavLink
                   to="/menu"
-                  onClick={(e) => { if (!isUserLoggedIn) { e.preventDefault(); navigate('/login'); } }}
                   className={({ isActive }) =>
                     `flex items-center space-x-1.5 px-3 py-1.5 rounded-full transition-all duration-200 ${
                       isActive
@@ -277,7 +276,6 @@ const Navbar = () => {
                 </NavLink>
                 <NavLink
                   to="/offers"
-                  onClick={(e) => { if (!isUserLoggedIn) { e.preventDefault(); navigate('/login'); } }}
                   className={({ isActive }) =>
                     `flex items-center space-x-1.5 px-3 py-1.5 rounded-full transition-all duration-200 ${
                       isActive
@@ -291,7 +289,6 @@ const Navbar = () => {
                 </NavLink>
                 <NavLink
                   to="/contact"
-                  onClick={(e) => { if (!isUserLoggedIn) { e.preventDefault(); navigate('/login'); } }}
                   className={({ isActive }) =>
                     `flex items-center space-x-1.5 px-3 py-1.5 rounded-full transition-all duration-200 ${
                       isActive
@@ -630,7 +627,6 @@ const Navbar = () => {
                 <NavLink
                   to="/menu"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  onClickCapture={(e) => { if (!isUserLoggedIn) { e.preventDefault(); setIsMobileMenuOpen(false); navigate('/login'); } }}
                   className={({ isActive }) =>
                     `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
                       isActive
@@ -645,7 +641,6 @@ const Navbar = () => {
                 <NavLink
                   to="/offers"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  onClickCapture={(e) => { if (!isUserLoggedIn) { e.preventDefault(); setIsMobileMenuOpen(false); navigate('/login'); } }}
                   className={({ isActive }) =>
                     `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
                       isActive
@@ -660,7 +655,6 @@ const Navbar = () => {
                 <NavLink
                   to="/contact"
                   onClick={() => setIsMobileMenuOpen(false)}
-                  onClickCapture={(e) => { if (!isUserLoggedIn) { e.preventDefault(); setIsMobileMenuOpen(false); navigate('/login'); } }}
                   className={({ isActive }) =>
                     `flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
                       isActive

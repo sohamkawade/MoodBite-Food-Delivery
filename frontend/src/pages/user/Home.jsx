@@ -153,6 +153,17 @@ const Home = () => {
 
   // Cart management functions (backend)
   const addToCart = async (itemId) => {
+    if (!isUserLoggedIn) {
+      toast.error("Please login to add items to cart", {
+        duration: 3000,
+        style: {
+          background: '#dc2626',
+          color: '#fff',
+        },
+      });
+      return;
+    }
+
     try {
       const it = [...trending, ...specials].find(i => i.id === itemId);
       const response = await cartAPI.addToCart({ menuItemId: itemId, quantity: 1, restaurantId: it && (it.restaurantId || it.restaurant?.id || it.restaurant?._id) });

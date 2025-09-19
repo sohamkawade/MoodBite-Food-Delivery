@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { MdSearch, MdTimer, MdLocalFireDepartment, MdStar, MdTrendingUp } from "react-icons/md";
 import { menuAPI, cartAPI } from "../../services/api";
+import { useUserAuth } from "../../context/UserAuthContext";
 import toast from 'react-hot-toast';
 
 const Menu = () => {
+  const { isUserLoggedIn } = useUserAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [sortBy, setSortBy] = useState("popularity");
@@ -69,6 +71,17 @@ const Menu = () => {
 
   // Cart management functions
   const addToCart = async (item) => {
+    if (!isUserLoggedIn) {
+      toast.error("Please login to add items to cart", {
+        duration: 3000,
+        style: {
+          background: '#dc2626',
+          color: '#fff',
+        },
+      });
+      return;
+    }
+
     try {
       const response = await cartAPI.addToCart({ menuItemId: item.id, quantity: 1, restaurantId: item.restaurantId });
       

@@ -3,7 +3,7 @@ const debug = require('debug')("development:mongoose");
 
 const mongoUri = process.env.MONGODB_URI;
 
-mongoose.connect(mongoUri)  // ⬅️ clean, no extra options needed
+mongoose.connect(mongoUri)  
   .then(() => {
     debug('Connected to MongoDB'); 
     console.log('Connected to MongoDB'); 
