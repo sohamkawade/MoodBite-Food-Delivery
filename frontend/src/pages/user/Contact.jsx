@@ -97,9 +97,8 @@ const Contact = () => {
 
 
   return (
-    <div className="px-4 sm:px-6 lg:px-8 pt-2 md:pt-2 pb-6 space-y-4 sm:space-y-6">
+    <div className="px-4 backcolor sm:px-6 lg:px-8 pt-2 md:pt-2 pb-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-4 sm:p-6">
         <div className="text-center">
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
             Contact Us
@@ -108,7 +107,6 @@ const Contact = () => {
             We'd love to hear from you. Send us a message and we'll respond as soon as possible.
           </p>
         </div>
-      </div>
 
       {/* Main Content */}
       <div className="max-w-6xl mx-auto">
