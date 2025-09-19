@@ -72,6 +72,15 @@ app.use('/api/restaurant', restaurantAuthRoutes);
 app.use('/api/ratings', ratingRoutes);
 
 
+// --------------------------------------------------------
+app.use(express.static(path.join(__dirname, "../frontend/dist")));
+
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "../frontend/dist/index.html"));
+});
+// --------------------------------------------------------
+
+
 app.use((err, req, res, next) => {
   console.error('Global error handler:', err);
   res.status(err.status || 500).json({
