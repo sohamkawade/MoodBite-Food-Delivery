@@ -1,4 +1,8 @@
-const API_BASE_URL = 'http://localhost:5000/api';
+// const API_BASE_URL = 'http://localhost:5000/api';
+
+const API_BASE_URL = import.meta.env.PROD
+  ? "https://moodbite-food-delivery.onrender.com/api"
+  : "http://localhost:5000/api";
 
 const getAuthToken = () => {
   return localStorage.getItem('userToken');
