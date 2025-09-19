@@ -19,10 +19,25 @@ const PaymentTest = () => {
   }, [isUserLoggedIn, navigate]);
 
   useEffect(() => {
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.onload = () => setRazorpayLoaded(true);
-    document.body.appendChild(script);
+    const loadRazorpay = () => {
+      // Check if Razorpay is already loaded
+      if (window.Razorpay) {
+        setRazorpayLoaded(true);
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.crossOrigin = 'anonymous';
+      script.onload = () => setRazorpayLoaded(true);
+      script.onerror = (error) => {
+        console.error('Failed to load Razorpay:', error);
+        toast.error('Failed to load payment system. Please refresh the page or check your browser settings.');
+      };
+      document.head.appendChild(script);
+    };
+
+    loadRazorpay();
   }, []);
 
   const handleTestPayment = async () => {
