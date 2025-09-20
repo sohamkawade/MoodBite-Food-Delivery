@@ -94,15 +94,52 @@ export const loadRazorpayScript = () => {
       // Fallback timeout
       setTimeout(() => {
         if (!window.Razorpay) {
-          console.log('HTML script timeout, trying dynamic loading...');
-          loadRazorpayAlternative()
-            .then(resolve)
-            .catch(() => {
-              console.log('Dynamic loading failed, trying final fallback...');
-              loadRazorpayFinalFallback().then(resolve).catch(reject);
-            });
+          console.log('HTML script timeout, trying to reload it...');
+          // Try to reload the HTML script
+          const newScript = document.createElement('script');
+          newScript.src = 'https://checkout.razorpay.com/v1/checkout.js';
+          newScript.type = 'text/javascript';
+          newScript.async = true;
+          newScript.crossOrigin = 'anonymous';
+          
+          newScript.onload = () => {
+            console.log('Reloaded script loaded, checking Razorpay...');
+            let attempts = 0;
+            const maxAttempts = 10;
+            
+            const checkRazorpay = () => {
+              attempts++;
+              if (window.Razorpay) {
+                console.log('Razorpay loaded via script reload');
+                resolve(true);
+              } else if (attempts >= maxAttempts) {
+                console.log('Script reload failed, trying dynamic loading...');
+                loadRazorpayAlternative()
+                  .then(resolve)
+                  .catch(() => {
+                    console.log('Dynamic loading failed, trying final fallback...');
+                    loadRazorpayFinalFallback().then(resolve).catch(reject);
+                  });
+              } else {
+                setTimeout(checkRazorpay, 500);
+              }
+            };
+            checkRazorpay();
+          };
+          
+          newScript.onerror = () => {
+            console.log('Script reload failed, trying dynamic loading...');
+            loadRazorpayAlternative()
+              .then(resolve)
+              .catch(() => {
+                console.log('Dynamic loading failed, trying final fallback...');
+                loadRazorpayFinalFallback().then(resolve).catch(reject);
+              });
+          };
+          
+          document.head.appendChild(newScript);
         }
-      }, 10000);
+      }, 8000);
       
       return;
     }
@@ -213,44 +250,46 @@ const loadRazorpayFinalFallback = () => {
   return new Promise((resolve, reject) => {
     console.log('Trying final fallback method...');
     
-    // Try a completely different approach - use fetch to load the script
-    fetch('https://checkout.razorpay.com/v1/checkout.js')
-      .then(response => response.text())
-      .then(scriptText => {
-        console.log('Fetched Razorpay script, evaluating...');
-        try {
-          // Create a new script element and set its content
-          const script = document.createElement('script');
-          script.type = 'text/javascript';
-          script.text = scriptText;
-          document.head.appendChild(script);
-          
-          // Wait for Razorpay to be available
-          let attempts = 0;
-          const maxAttempts = 20; // 10 seconds max
-          
-          const checkRazorpay = () => {
-            attempts++;
-            if (window.Razorpay) {
-              console.log('Razorpay loaded via final fallback method');
-              resolve(true);
-            } else if (attempts >= maxAttempts) {
-              console.error('Final fallback also failed');
-              reject(new Error('All Razorpay loading methods failed'));
-            } else {
-              setTimeout(checkRazorpay, 500);
-            }
-          };
-          checkRazorpay();
-        } catch (error) {
-          console.error('Error evaluating Razorpay script:', error);
-          reject(error);
-        }
-      })
-      .catch(error => {
-        console.error('Failed to fetch Razorpay script:', error);
-        reject(error);
-      });
+    // Try a different approach - create script with different attributes
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.type = 'text/javascript';
+    script.async = false; // Try synchronous loading
+    script.crossOrigin = 'anonymous';
+    
+    // Add to head immediately
+    document.head.appendChild(script);
+    
+    // Wait for Razorpay to be available
+    let attempts = 0;
+    const maxAttempts = 20; // 10 seconds max
+    
+    const checkRazorpay = () => {
+      attempts++;
+      if (window.Razorpay) {
+        console.log('Razorpay loaded via final fallback method');
+        resolve(true);
+      } else if (attempts >= maxAttempts) {
+        console.error('Final fallback also failed - Razorpay not available');
+        reject(new Error('All Razorpay loading methods failed'));
+      } else {
+        setTimeout(checkRazorpay, 500);
+      }
+    };
+    
+    // Start checking immediately
+    checkRazorpay();
+    
+    // Also listen for script events
+    script.onload = () => {
+      console.log('Final fallback script loaded');
+      checkRazorpay();
+    };
+    
+    script.onerror = (error) => {
+      console.error('Final fallback script failed to load:', error);
+      reject(new Error('Final fallback script failed to load'));
+    };
   });
 };
 
