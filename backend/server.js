@@ -36,14 +36,37 @@ app.use(
           'http://localhost:5000',
           'https://moodbite-food-delivery.onrender.com',
           'https://cdn.jsdelivr.net',
-          'https://unpkg.com'
+          'https://unpkg.com',
+          'https://api.razorpay.com',
+          'https://*.razorpay.com',
+          'https://checkout.razorpay.com'
         ],
-
-        scriptSrc: ["'self'", "'wasm-unsafe-eval'"],
+        scriptSrc: [
+          "'self'", 
+          "'wasm-unsafe-eval'",
+          'https://checkout.razorpay.com',
+          'https://*.razorpay.com'
+        ],
         workerSrc: ["'self'", 'blob:'],
-        imgSrc: ["'self'", 'data:', 'blob:', 'https:', 'http:'],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        frameSrc: ["'self'"]
+        imgSrc: [
+          "'self'", 
+          'data:', 
+          'blob:', 
+          'https:', 
+          'http:',
+          'https://*.razorpay.com'
+        ],
+        styleSrc: [
+          "'self'", 
+          "'unsafe-inline'",
+          'https://checkout.razorpay.com',
+          'https://*.razorpay.com'
+        ],
+        frameSrc: [
+          "'self'",
+          'https://checkout.razorpay.com',
+          'https://*.razorpay.com'
+        ]
       }
     }
   })

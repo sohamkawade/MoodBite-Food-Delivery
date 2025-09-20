@@ -131,8 +131,8 @@ const Navbar = () => {
             to="/"
           >
             <div className="flex items-center">
-              <GiKnifeFork size={24} className="text-gray-800 sm:hidden" />
-              <GiKnifeFork size={28} className="text-gray-800 hidden sm:block" />
+              {/* <GiKnifeFork size={24} className="text-gray-800 sm:hidden" />
+              <GiKnifeFork size={28} className="text-gray-800 hidden sm:block" /> */}
               <span className="bg-gradient-to-r from-orange-500 via-orange-700 to-orange-800 bg-clip-text text-transparent ml-2">MoodBite</span>
             </div>
           </Link>
