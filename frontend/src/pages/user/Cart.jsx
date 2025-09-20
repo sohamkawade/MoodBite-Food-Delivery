@@ -87,11 +87,10 @@ const Cart = () => {
     }
   };
 
-  // Get cart totals from backend data and compute delivery by amount rules
+  // Get cart totals from backend data - free delivery for all orders
   const subtotal = cartData?.subtotal || 0;
   const tax = cartData?.tax || 0;
-  const amountForDelivery = subtotal + tax;
-  const deliveryCharge = amountForDelivery < 200 ? 40 : amountForDelivery < 500 ? 20 : 0;
+  const deliveryCharge = 0; // Free delivery
   const total = subtotal + tax + deliveryCharge;
 
   // Handle checkout
@@ -325,7 +324,7 @@ const Cart = () => {
                 
                 <div className="flex justify-between text-gray-600 py-1 md:py-2 text-sm md:text-base">
                   <span>Delivery Charge</span>
-                  <span className="font-medium">₹{deliveryCharge.toFixed(2)}</span>
+                  <span className="font-medium text-green-600">FREE</span>
                 </div>
                 
                 <div className="border-t border-gray-200 pt-3 md:pt-4">

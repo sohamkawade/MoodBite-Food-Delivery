@@ -73,10 +73,7 @@ const Checkout = () => {
 
   const subtotal = cart?.subtotal || 0;
   const tax = cart?.tax || 0;
-  const amountForDelivery = subtotal + tax;
-  const baseDeliveryFee = amountForDelivery < 200 ? 40 : amountForDelivery < 500 ? 20 : 0;
-
-  const deliveryFee = baseDeliveryFee;
+  const deliveryFee = 0; // Free delivery for all orders
   const total = subtotal + tax + deliveryFee;
 
   const fieldsOk = !!(address.street && address.city && address.state);
@@ -327,7 +324,7 @@ const Checkout = () => {
               <div className="p-4 md:p-6 space-y-2 text-gray-700">
                 <div className="flex justify-between text-sm md:text-base"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
                 <div className="flex justify-between text-sm md:text-base"><span>Tax</span><span>₹{tax.toFixed(2)}</span></div>
-                <div className="flex justify-between text-sm md:text-base"><span>Delivery</span><span>₹{deliveryFee.toFixed(2)}</span></div>
+                <div className="flex justify-between text-sm md:text-base"><span>Delivery</span><span className="text-green-600 font-semibold">FREE</span></div>
                 <div className="border-t pt-3 flex justify-between font-bold text-gray-900 text-base md:text-lg"><span>Total</span><span>₹{total.toFixed(2)}</span></div>
                 <button
                   onClick={placeOrder}

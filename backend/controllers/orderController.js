@@ -8,9 +8,6 @@ const MenuItem = require('../models/MenuItem');
 
 // Compute delivery by amount (subtotal + tax)
 const computeDeliveryFee = (subtotal, tax) => {
-  const amount = (subtotal || 0) + (tax || 0);
-  if (amount < 200) return 40;
-  if (amount < 500) return 20;
   return 0;
 };
 

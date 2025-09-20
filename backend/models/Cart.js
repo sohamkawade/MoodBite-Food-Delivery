@@ -118,8 +118,8 @@ cartSchema.pre('save', async function(next) {
     // Calculate tax (8%)
     this.tax = this.subtotal * 0.08;
     
-    // Calculate delivery fee (will be set by restaurant settings)
-    // For now, keep the existing delivery fee
+    // Set delivery fee to 0 (free delivery)
+    this.deliveryFee = 0;
     
     // Calculate total
     this.total = this.subtotal + this.tax + this.deliveryFee - this.discount;
