@@ -94,6 +94,13 @@ app.use('/api/restaurant', restaurantAuthRoutes);
 app.use('/api/ratings', ratingRoutes);
 app.use('/api/payments', paymentRoutes);
 
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*"); // or your frontend URL
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+  res.header("Access-Control-Expose-Headers", "x-rtb-fingerprint-id"); 
+  next();
+});
+
 
 app.use(express.static(path.join(__dirname, "../frontend/dist")));
 

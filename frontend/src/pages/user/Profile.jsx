@@ -402,7 +402,7 @@ const Profile = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm text-gray-500">Total Spent</p>
-                <p className="text-2xl font-bold text-gray-900">₹{user.totalSpent || 0}</p>
+                <p className="text-2xl font-bold text-gray-900">₹{Math.floor(user.totalSpent) || 0}</p>
               </div>
             </div>
           </div>
