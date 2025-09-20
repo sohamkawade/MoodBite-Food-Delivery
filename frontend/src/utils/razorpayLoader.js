@@ -18,16 +18,46 @@ export const loadRazorpayScript = () => {
     // Check if script is already in HTML (from index.html)
     const existingScript = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
     if (existingScript) {
-      console.log('Razorpay script found in HTML, waiting for it to load...');
+      console.log('Razorpay script found in HTML, starting parallel loading...');
+      
+      // Start both HTML script check and dynamic loading in parallel
+      let htmlResolved = false;
+      let dynamicResolved = false;
+      
+      // Check HTML script (with timeout)
+      let attempts = 0;
+      const maxAttempts = 6; // 3 seconds max wait
+      
       const checkRazorpay = () => {
-        if (window.Razorpay) {
+        attempts++;
+        if (window.Razorpay && !htmlResolved) {
           console.log('Razorpay loaded from HTML script');
+          htmlResolved = true;
           resolve(true);
-        } else {
+        } else if (attempts >= maxAttempts && !htmlResolved) {
+          console.log('HTML script taking too long, will rely on dynamic loading...');
+          htmlResolved = true;
+        } else if (!htmlResolved) {
           setTimeout(checkRazorpay, 500);
         }
       };
       checkRazorpay();
+      
+      // Start dynamic loading immediately as backup
+      loadRazorpayAlternative()
+        .then(() => {
+          if (!htmlResolved) {
+            console.log('Razorpay loaded via dynamic method');
+            dynamicResolved = true;
+            resolve(true);
+          }
+        })
+        .catch(() => {
+          if (!htmlResolved) {
+            console.log('Dynamic loading also failed');
+          }
+        });
+      
       return;
     }
 
@@ -84,31 +114,51 @@ const loadRazorpayAlternative = () => {
   return new Promise((resolve, reject) => {
     console.log('Trying alternative Razorpay loading method...');
     
+    // Remove the slow HTML script first
+    const htmlScript = document.querySelector('script[data-razorpay-html]');
+    if (htmlScript) {
+      htmlScript.remove();
+      console.log('Removed slow HTML script');
+    }
+    
     // Try loading with different attributes
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
     script.type = 'text/javascript';
     script.async = true;
-    script.defer = true;
+    script.crossOrigin = 'anonymous';
     
     script.onload = () => {
-      setTimeout(() => {
+      console.log('Alternative script loaded, checking Razorpay availability...');
+      let attempts = 0;
+      const maxAttempts = 10; // 5 seconds max
+      
+      const checkRazorpay = () => {
+        attempts++;
         if (window.Razorpay) {
           console.log('Razorpay loaded via alternative method');
           resolve(true);
+        } else if (attempts >= maxAttempts) {
+          console.error('Alternative loading timeout - Razorpay not available');
+          reject(new Error('Razorpay failed to load after timeout'));
         } else {
-          console.error('Alternative loading also failed');
-          reject(new Error('Razorpay failed to load'));
+          setTimeout(checkRazorpay, 500);
         }
-      }, 2000);
+      };
+      checkRazorpay();
     };
     
-    script.onerror = () => {
-      console.error('Alternative loading failed');
-      reject(new Error('Razorpay failed to load'));
+    script.onerror = (error) => {
+      console.error('Alternative loading failed:', error);
+      reject(new Error('Razorpay script failed to load'));
     };
 
-    document.body.appendChild(script);
+    // Add to head for faster loading
+    if (document.head) {
+      document.head.appendChild(script);
+    } else {
+      document.body.appendChild(script);
+    }
   });
 };
 
