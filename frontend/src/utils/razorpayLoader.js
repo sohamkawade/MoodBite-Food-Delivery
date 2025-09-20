@@ -13,7 +13,7 @@ export const loadRazorpayScript = () => {
       return;
     }
 
-    console.log('Loading Razorpay script...');
+    console.log('Loading Razorpay script!');
 
     // Check if script is already in HTML (from index.html)
     const existingScript = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
