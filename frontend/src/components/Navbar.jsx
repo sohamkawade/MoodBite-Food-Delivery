@@ -726,6 +726,14 @@ const Navbar = () => {
                     <MdShoppingCart size={20} />
                     <span className="font-medium">My Orders</span>
                   </Link>
+                  <Link
+                    to="/payment-test"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex items-center space-x-3 px-4 py-3 text-gray-700 hover:text-orange-600 hover:bg-gray-50 rounded-lg transition-colors"
+                  >
+                    <MdLocalOffer size={20} />
+                    <span className="font-medium">Payment Test</span>
+                  </Link>
                   <button
                     onClick={async () => {
                       await userLogout();
