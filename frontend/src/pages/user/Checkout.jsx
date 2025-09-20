@@ -57,19 +57,30 @@ const Checkout = () => {
   // Load Razorpay script
   useEffect(() => {
     const loadRazorpay = () => {
-      return new Promise((resolve) => {
-        const script = document.createElement('script');
-        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-        script.onload = () => {
+      // Check if Razorpay is already loaded
+      if (window.Razorpay) {
+        setRazorpayLoaded(true);
+        return;
+      }
+
+      // Dynamically load Razorpay script
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      
+      script.onload = () => {
+        if (window.Razorpay) {
           setRazorpayLoaded(true);
-          resolve(true);
-        };
-        script.onerror = () => {
-          console.error('Failed to load Razorpay');
-          resolve(false);
-        };
-        document.body.appendChild(script);
-      });
+        } else {
+          console.error('Razorpay script loaded but window.Razorpay not available');
+        }
+      };
+      
+      script.onerror = () => {
+        console.error('Failed to load Razorpay script');
+      };
+
+      document.head.appendChild(script);
     };
 
     loadRazorpay();
