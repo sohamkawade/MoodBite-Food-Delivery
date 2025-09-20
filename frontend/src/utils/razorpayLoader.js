@@ -1,5 +1,8 @@
 import React from 'react';
 
+// Check if we're in production
+const isProduction = process.env.NODE_ENV === 'production';
+
 // Utility function to load Razorpay script dynamically
 export const loadRazorpayScript = () => {
   return new Promise((resolve, reject) => {
@@ -12,15 +15,32 @@ export const loadRazorpayScript = () => {
 
     console.log('Loading Razorpay script...');
 
-    // Remove any existing Razorpay scripts to avoid conflicts
-    const existingScripts = document.querySelectorAll('script[src*="checkout.razorpay.com"]');
-    existingScripts.forEach(script => script.remove());
+    // Check if script is already in HTML (from index.html)
+    const existingScript = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+    if (existingScript) {
+      console.log('Razorpay script found in HTML, waiting for it to load...');
+      const checkRazorpay = () => {
+        if (window.Razorpay) {
+          console.log('Razorpay loaded from HTML script');
+          resolve(true);
+        } else {
+          setTimeout(checkRazorpay, 500);
+        }
+      };
+      checkRazorpay();
+      return;
+    }
+
+    // Remove any existing dynamically loaded Razorpay scripts to avoid conflicts
+    const existingDynamicScripts = document.querySelectorAll('script[src*="checkout.razorpay.com"]:not([data-razorpay-html])');
+    existingDynamicScripts.forEach(script => script.remove());
 
     // Create script element
     const script = document.createElement('script');
     script.src = 'https://checkout.razorpay.com/v1/checkout.js';
     script.async = true;
     script.crossOrigin = 'anonymous';
+    script.type = 'text/javascript';
     
     script.onload = () => {
       console.log('Razorpay script loaded successfully');
@@ -34,7 +54,7 @@ export const loadRazorpayScript = () => {
           // Try alternative loading method
           loadRazorpayAlternative().then(resolve).catch(reject);
         }
-      }, 1000);
+      }, 2000);
     };
     
     script.onerror = (error) => {
@@ -43,7 +63,12 @@ export const loadRazorpayScript = () => {
       loadRazorpayAlternative().then(resolve).catch(reject);
     };
 
-    document.head.appendChild(script);
+    // Try to append to head first, fallback to body
+    if (document.head) {
+      document.head.appendChild(script);
+    } else {
+      document.body.appendChild(script);
+    }
 
     // Fallback timeout
     setTimeout(() => {
@@ -51,7 +76,7 @@ export const loadRazorpayScript = () => {
         console.error('Razorpay failed to load within timeout');
         loadRazorpayAlternative().then(resolve).catch(reject);
       }
-    }, 10000);
+    }, 15000);
   });
 };
 
@@ -92,6 +117,7 @@ export const useRazorpayLoader = () => {
   const [isLoaded, setIsLoaded] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState(null);
+  const [retryCount, setRetryCount] = React.useState(0);
 
   React.useEffect(() => {
     const loadScript = async () => {
@@ -100,16 +126,30 @@ export const useRazorpayLoader = () => {
         setError(null);
         await loadRazorpayScript();
         setIsLoaded(true);
+        setRetryCount(0);
       } catch (err) {
         console.error('Failed to load Razorpay:', err);
         setError(err.message);
+        
+        // Retry up to 3 times with exponential backoff
+        if (retryCount < 3) {
+          const delay = Math.pow(2, retryCount) * 1000; // 1s, 2s, 4s
+          setTimeout(() => {
+            setRetryCount(prev => prev + 1);
+            loadScript();
+          }, delay);
+        } else {
+          setIsLoading(false);
+        }
       } finally {
-        setIsLoading(false);
+        if (retryCount >= 3) {
+          setIsLoading(false);
+        }
       }
     };
 
     loadScript();
-  }, []);
+  }, [retryCount]);
 
-  return { isLoaded, isLoading, error };
+  return { isLoaded, isLoading, error, retryCount };
 };
