@@ -3,6 +3,7 @@ import { paymentAPI } from '../../services/api';
 import { useUserAuth } from '../../context/UserAuthContext';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import { loadRazorpayScript } from '../../utils/razorpayLoader';
 
 const PaymentTest = () => {
   const { isUserLoggedIn, user } = useUserAuth();
@@ -19,41 +20,14 @@ const PaymentTest = () => {
   }, [isUserLoggedIn, navigate]);
 
   useEffect(() => {
-    const loadRazorpay = () => {
-      // Check if Razorpay is already loaded
-      if (window.Razorpay) {
+    const loadRazorpay = async () => {
+      try {
+        await loadRazorpayScript();
         setRazorpayLoaded(true);
-        return;
+      } catch (error) {
+        console.error('Failed to load Razorpay:', error);
+        toast.error('Payment system unavailable. Please check your internet connection and try again.');
       }
-
-      // Dynamically load Razorpay script
-      const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.async = true;
-      
-      script.onload = () => {
-        if (window.Razorpay) {
-          setRazorpayLoaded(true);
-        } else {
-          console.error('Razorpay script loaded but window.Razorpay not available');
-          toast.error('Payment system unavailable. Please refresh the page.');
-        }
-      };
-      
-      script.onerror = () => {
-        console.error('Failed to load Razorpay script');
-        toast.error('Payment system unavailable. Please refresh the page.');
-      };
-
-      document.head.appendChild(script);
-
-      // Fallback timeout
-      setTimeout(() => {
-        if (!window.Razorpay) {
-          console.error('Razorpay failed to load within timeout');
-          toast.error('Payment system unavailable. Please refresh the page.');
-        }
-      }, 15000);
     };
 
     loadRazorpay();

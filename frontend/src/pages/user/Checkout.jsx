@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { MdLocationOn, MdPayment, MdHome, MdLocalShipping, MdSecurity, MdCreditCard } from 'react-icons/md';
 import { cartAPI, ordersAPI, userAPI, paymentAPI } from '../../services/api';
 import toast from 'react-hot-toast';
+import { loadRazorpayScript } from '../../utils/razorpayLoader';
 
 const Checkout = () => {
   const [cart, setCart] = useState(null);
@@ -56,31 +57,13 @@ const Checkout = () => {
 
   // Load Razorpay script
   useEffect(() => {
-    const loadRazorpay = () => {
-      // Check if Razorpay is already loaded
-      if (window.Razorpay) {
+    const loadRazorpay = async () => {
+      try {
+        await loadRazorpayScript();
         setRazorpayLoaded(true);
-        return;
+      } catch (error) {
+        console.error('Failed to load Razorpay in Checkout:', error);
       }
-
-      // Dynamically load Razorpay script
-      const script = document.createElement('script');
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.async = true;
-      
-      script.onload = () => {
-        if (window.Razorpay) {
-          setRazorpayLoaded(true);
-        } else {
-          console.error('Razorpay script loaded but window.Razorpay not available');
-        }
-      };
-      
-      script.onerror = () => {
-        console.error('Failed to load Razorpay script');
-      };
-
-      document.head.appendChild(script);
     };
 
     loadRazorpay();
