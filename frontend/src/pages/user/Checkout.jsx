@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { MdLocationOn, MdPayment, MdHome, MdLocalShipping, MdSecurity, MdCreditCard } from 'react-icons/md';
 import { cartAPI, ordersAPI, userAPI, paymentAPI } from '../../services/api';
+import { useUserAuth } from '../../context/UserAuthContext';
 import toast from 'react-hot-toast';
 import { loadRazorpayScript } from '../../utils/razorpayLoader';
 
 const Checkout = () => {
+  const { user } = useUserAuth();
   const [cart, setCart] = useState(null);
   const [items, setItems] = useState([]);
   const [address, setAddress] = useState({
@@ -124,9 +126,9 @@ const Checkout = () => {
           }
         },
         prefill: {
-          name: 'Customer',
-          email: 'customer@moodbite.com',
-          contact: '9999999999'
+          name: user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : 'Customer',
+          email: user?.email || 'customer@moodbite.com',
+          contact: user?.phone || '9999999999'
         },
         theme: {
           color: '#f97316'

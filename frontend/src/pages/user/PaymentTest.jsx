@@ -10,59 +10,47 @@ const PaymentTest = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
-  const [testAmount, setTestAmount] = useState(1);
+  const [amount, setAmount] = useState(1);
 
   useEffect(() => {
     if (!isUserLoggedIn) {
-      toast.error('Please login to test payments');
+      toast.error('Please login to continue');
       navigate('/login');
     }
   }, [isUserLoggedIn, navigate]);
 
   useEffect(() => {
-    const loadRazorpay = async () => {
-      try {
-        await loadRazorpayScript();
-        setRazorpayLoaded(true);
-      } catch (error) {
-        console.error('Failed to load Razorpay:', error);
-        toast.error('Payment system unavailable. Please check your internet connection and try again.');
-      }
-    };
-
-    loadRazorpay();
+    loadRazorpayScript()
+      .then(() => setRazorpayLoaded(true))
+      .catch(() => toast.error('Failed to load payment gateway. Please try again.'));
   }, []);
 
-  const handleTestPayment = async () => {
-    if (!razorpayLoaded) {
-      toast.error('Razorpay is still loading, please wait...');
-      return;
-    }
+  const handlePayment = async () => {
+    if (!razorpayLoaded) return toast.error('Payment gateway is loading, please wait...');
     setLoading(true);
-    try {
-      const orderResponse = await paymentAPI.createRazorpayOrder(testAmount, `payment_${Date.now()}`);
-      if (!orderResponse.success) throw new Error(orderResponse.message);
 
-      const { id, amount, currency, key } = orderResponse.data;
+    try {
+      const order = await paymentAPI.createRazorpayOrder(amount, `order_${Date.now()}`);
+      if (!order.success) throw new Error(order.message);
+
+      const { id, currency, key } = order.data;
 
       const options = {
         key,
-        amount,
+        amount: amount * 100,
         currency,
         name: 'MoodBite',
-        description: `Real Payment of ₹${testAmount}`,
+        description: `Payment of ₹${amount}`,
         order_id: id,
-        handler: async (response) => {
-          const verifyResponse = await paymentAPI.verifyRazorpayPayment(
-            response.razorpay_order_id,
-            response.razorpay_payment_id,
-            response.razorpay_signature
+        handler: async (res) => {
+          const verify = await paymentAPI.verifyRazorpayPayment(
+            res.razorpay_order_id,
+            res.razorpay_payment_id,
+            res.razorpay_signature
           );
-          if (verifyResponse.success) {
-            toast.success(`Payment ₹${testAmount} successful!`);
-          } else {
-            toast.error('Payment verification failed');
-          }
+          verify.success
+            ? toast.success(`Payment of ₹${amount} completed successfully`)
+            : toast.error('Payment verification failed. Please contact support.');
         },
         prefill: {
           name: user?.firstName || 'User',
@@ -74,57 +62,48 @@ const PaymentTest = () => {
 
       new window.Razorpay(options).open();
     } catch (err) {
-      toast.error('Payment initiation failed');
+      toast.error('Payment failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen backcolor flex items-center justify-center px-4">
-      <div className="bg-white shadow-lg rounded-xl p-8 w-full max-w-md space-y-6">
-        <h1 className="text-2xl font-bold text-center text-gray-800">💳 Test Real Payment</h1>
+    <div className="min-h-screen backcolor flex items-center justify-center px-4 bg-gray-50">
+      <div className="bg-white shadow-md rounded-lg p-6 w-full max-w-sm space-y-5">
+        <h1 className="text-xl font-bold text-center text-gray-800">Test Payment Page</h1>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
-          <p className="font-semibold mb-1">Important Information:</p>
-          <ul className="list-disc ml-5 space-y-1">
-            <li>This will process a <strong>real payment</strong> via Razorpay.</li>
-            <li>Money will be deducted from your UPI/Card/Wallet.</li>
-            <li>Minimum test amount is ₹1.</li>
-            <li>You’ll get a real payment confirmation after success.</li>
-          </ul>
+        <div className="bg-red-50 border border-red-400 rounded-md p-3 text-sm text-red-800 text-center font-semibold">
+          ⚠️ Warning: This is a real payment page created for testing by the developer.  
+          Any payment you make here <strong>will be charged immediately</strong>. Only proceed if you understand this.
         </div>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Amount (₹)</label>
           <input
             type="number"
-            value={testAmount}
-            onChange={(e) => setTestAmount(Math.max(1, parseInt(e.target.value) || 1))}
+            value={amount}
+            onChange={(e) => setAmount(Math.max(1, parseInt(e.target.value) || 1))}
             className="w-full border rounded-lg px-3 py-2 text-center"
             min="1"
           />
         </div>
 
         <button
-          onClick={handleTestPayment}
+          onClick={handlePayment}
           disabled={loading || !razorpayLoaded}
-          className={`w-full py-3 rounded-lg font-semibold text-white transition-all ${
+          className={`w-full py-2 rounded-lg font-semibold text-white transition-all ${
             loading || !razorpayLoaded
               ? 'bg-gray-400 cursor-not-allowed'
               : 'bg-orange-500 hover:bg-orange-600'
           }`}
         >
-          {loading ? 'Processing...' : `Pay ₹${testAmount}`}
+          {loading ? 'Processing...' : `Pay ₹${amount} Now`}
         </button>
 
-        {!razorpayLoaded && (
-          <p className="text-center text-sm text-gray-500">Loading Razorpay...</p>
-        )}
-
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-xs text-red-700 text-center">
-          ⚠️ This is a <strong>real payment</strong>. Please use a valid UPI, card, or wallet.
-        </div>
+        <p className="text-xs text-gray-500 text-center">
+          For support or questions, contact support@moodbite.com
+        </p>
       </div>
     </div>
   );
