@@ -76,12 +76,25 @@ const verifyRazorpayPayment = async (req, res) => {
       });
     }
 
+    // Store payment verification details for later use
+    // This will be used when order is placed
+    const paymentData = {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      verified: true,
+      verifiedAt: new Date()
+    };
+
+    // Store in a temporary cache or database for order placement
+    // For now, we'll just return the data
     res.json({
       success: true,
       message: 'Payment verified successfully',
       data: {
         order_id: razorpay_order_id,
-        payment_id: razorpay_payment_id
+        payment_id: razorpay_payment_id,
+        paymentData
       }
     });
   } catch (error) {

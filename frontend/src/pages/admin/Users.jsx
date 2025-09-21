@@ -181,11 +181,11 @@ const Users = () => {
         <div className="bg-white p-4 sm:p-6 rounded-xl shadow-sm border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs sm:text-sm font-medium text-gray-600">Total Revenue</p>
-              <p className="text-2xl font-bold text-orange-600">₹{users.reduce((sum, user) => sum + user.totalSpent, 0).toLocaleString()}</p>
+              <p className="text-xs sm:text-sm font-medium text-gray-600">Blocked Users</p>
+              <p className="text-2xl font-bold text-red-600">{users.filter(u => u.status === "Blocked").length}</p>
             </div>
-            <div className="p-2 sm:p-3 bg-orange-100 rounded-lg">
-              <MdPeople size={24} className="text-orange-600" />
+            <div className="p-2 sm:p-3 bg-red-100 rounded-lg">
+              <MdPeople size={24} className="text-red-600" />
             </div>
           </div>
         </div>
@@ -274,7 +274,7 @@ const Users = () => {
                   <td className="px-3 md:px-6 py-2 md:py-4 whitespace-nowrap">
                     <div className="text-xs sm:text-sm text-gray-900">
                       <div>{user.totalOrders} orders</div>
-                      <div className="text-[11px] sm:text-xs text-gray-500">₹{user.totalSpent.toLocaleString()}</div>
+                      <div className="text-[11px] sm:text-xs text-gray-500">Customer</div>
                     </div>
                   </td>
                   <td className="px-3 md:px-6 py-2 md:py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
@@ -367,8 +367,8 @@ const Users = () => {
                   <p className="text-xl sm:text-2xl font-bold text-blue-600">{viewUser.totalOrders}</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Total Spent</label>
-                  <p className="text-xl sm:text-2xl font-bold text-orange-500">₹{viewUser.totalSpent.toLocaleString()}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Member Since</label>
+                  <p className="text-xl sm:text-2xl font-bold text-green-500">2024</p>
                 </div>
               </div>
             </div>

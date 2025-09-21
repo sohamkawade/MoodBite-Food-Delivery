@@ -24,6 +24,8 @@ const Orders = () => {
   const [selectedRider, setSelectedRider] = useState("");
   const [originalEdit, setOriginalEdit] = useState(null);
   const [assignError, setAssignError] = useState("");
+  const [onlineDeliveryBoys, setOnlineDeliveryBoys] = useState([]);
+  const [showOnlineList, setShowOnlineList] = useState(false);
 
   const load = async () => {
     try {
@@ -41,8 +43,21 @@ const Orders = () => {
     }
   };
 
+  const loadOnlineDeliveryBoys = async () => {
+    try {
+      const response = await deliveryBoysAPI.getOnline();
+      if (response.success) {
+        setOnlineDeliveryBoys(response.data || []);
+      }
+    } catch (error) {
+      console.error('Failed to load online delivery boys:', error);
+      setOnlineDeliveryBoys([]);
+    }
+  };
+
   useEffect(() => {
-    load(); /* eslint-disable-next-line */
+    load();
+    loadOnlineDeliveryBoys(); /* eslint-disable-next-line */
   }, []);
   useEffect(() => {
     load(); /* eslint-disable-next-line */
@@ -274,6 +289,18 @@ const Orders = () => {
             </select>
           </div>
           <div className="flex space-x-3 w-full md:w-auto">
+            <button 
+              onClick={() => {
+                setShowOnlineList(!showOnlineList);
+                if (!showOnlineList) {
+                  loadOnlineDeliveryBoys();
+                }
+              }}
+              className="w-full md:w-auto px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium flex items-center justify-center space-x-2 text-sm"
+            >
+              <MdVisibility size={20} />
+              <span>Online Delivery Boys ({onlineDeliveryBoys.length})</span>
+            </button>
             <button onClick={exportOrders} className="w-full md:w-auto px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-medium flex items-center justify-center space-x-2 text-sm">
               <MdFileDownload size={20} />
               <span>Export</span>
@@ -435,6 +462,66 @@ const Orders = () => {
         </div>
       )}
 
+      {/* Online Delivery Boys Modal */}
+      {showOnlineList && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-0 sm:p-4">
+          <div className="bg-white rounded-t-xl sm:rounded-xl w-full max-w-[95%] sm:max-w-2xl mx-0 sm:mx-4 mb-2 sm:mb-0 max-h-[85vh] overflow-y-auto pb-[env(safe-area-inset-bottom)]">
+            <div className="p-3 sm:p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base sm:text-xl font-bold text-gray-900">
+                  Online Delivery Boys ({onlineDeliveryBoys.length})
+                </h3>
+                <button 
+                  onClick={() => setShowOnlineList(false)} 
+                  className="p-2 -m-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <MdClose size={22} className="text-gray-500" />
+                </button>
+              </div>
+            </div>
+            <div className="p-3 sm:p-6">
+              {onlineDeliveryBoys.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="text-gray-500 text-lg mb-2">No delivery boys online</div>
+                  <div className="text-gray-400 text-sm">All delivery boys are currently offline</div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {onlineDeliveryBoys.map((deliveryBoy) => (
+                    <div key={deliveryBoy._id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                          <MdVisibility size={20} className="text-green-600" />
+                        </div>
+                        <div>
+                          <div className="font-semibold text-gray-900">{deliveryBoy.name}</div>
+                          <div className="text-sm text-gray-600">{deliveryBoy.phone}</div>
+                          <div className="text-xs text-gray-500">
+                            {deliveryBoy.area && `Area: ${deliveryBoy.area}`}
+                            {deliveryBoy.assignedRestaurant && ` • Restaurant: ${deliveryBoy.assignedRestaurant.name}`}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          <span className="text-sm font-medium text-green-600">Online</span>
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {deliveryBoy.onlineExpiresAt && 
+                            `Expires: ${new Date(deliveryBoy.onlineExpiresAt).toLocaleTimeString()}`
+                          }
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Edit/Monitor Modal */}
       {editOrder && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-0 sm:p-4">
@@ -498,9 +585,60 @@ const Orders = () => {
 
                 {!["cancelled", "delivered"].includes(editOrder?.status) ? (
                   <div className="space-y-3">
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <button onClick={() => { if (confirm("Are you sure you want to cancel this order? This action cannot be undone.")) { handleSaveEdit({ ...editOrder, status: "cancelled" }); } }} className="flex-1 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium text-sm flex items-center justify-center">Cancel Order</button>
-                      <button onClick={async () => { try { setAssignError(""); const res = await ordersAPI.adminAutoAssign(editOrder._id); if (res.success && res.data && res.data.deliveryBoy) { const rb = res.data.deliveryBoy; setEditOrder((prev) => ({ ...prev, deliveryPartnerName: rb.name || "", deliveryPartnerPhone: rb.phone || "", deliveryBoyId: rb._id, })); } } catch (e) { setAssignError(e?.message || "No online delivery boys available in this area"); } }} disabled={!["preparing", "ready_for_pickup", "delivery_rejected"].includes(editOrder?.status)} className={`flex-1 px-3 py-2 rounded-lg font-medium text-sm flex items-center justify-center transition-colors ${["preparing", "ready_for_pickup", "delivery_rejected"].includes(editOrder?.status) ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-gray-300 text-gray-500 cursor-not-allowed"}`}>Auto Assign</button>
+                    <div className="space-y-2">
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <button onClick={() => { if (confirm("Are you sure you want to cancel this order? This action cannot be undone.")) { handleSaveEdit({ ...editOrder, status: "cancelled" }); } }} className="flex-1 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium text-sm flex items-center justify-center">Cancel Order</button>
+                        <button onClick={async () => { try { setAssignError(""); await loadOnlineDeliveryBoys(); const res = await ordersAPI.adminAutoAssign(editOrder._id); if (res.success && res.data && res.data.deliveryBoy) { const rb = res.data.deliveryBoy; setEditOrder((prev) => ({ ...prev, deliveryPartnerName: rb.name || "", deliveryPartnerPhone: rb.phone || "", deliveryBoyId: rb._id, })); await loadOnlineDeliveryBoys(); } } catch (e) { setAssignError(e?.message || "No online delivery boys available in this area"); } }} disabled={!["preparing", "ready_for_pickup", "delivery_rejected"].includes(editOrder?.status)} className={`flex-1 px-3 py-2 rounded-lg font-medium text-sm flex items-center justify-center transition-colors ${["preparing", "ready_for_pickup", "delivery_rejected"].includes(editOrder?.status) ? "bg-blue-600 text-white hover:bg-blue-700" : "bg-gray-300 text-gray-500 cursor-not-allowed"}`}>Auto Assign ({onlineDeliveryBoys.length} online)</button>
+                      </div>
+                      
+                      {/* Manual Assignment */}
+                      {onlineDeliveryBoys.length > 0 && (
+                        <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                          <h5 className="text-sm font-medium text-gray-700 mb-2">Or Select Manually:</h5>
+                          <div className="space-y-2 max-h-24 overflow-y-auto">
+                            {onlineDeliveryBoys.map((deliveryBoy) => (
+                              <button
+                                key={deliveryBoy._id}
+                                onClick={async () => {
+                                  try {
+                                    setAssignError("");
+                                    const res = await ordersAPI.adminUpdate(editOrder._id, {
+                                      deliveryBoyId: deliveryBoy._id,
+                                      deliveryPartnerName: deliveryBoy.name,
+                                      deliveryPartnerPhone: deliveryBoy.phone
+                                    });
+                                    if (res.success) {
+                                      setEditOrder((prev) => ({
+                                        ...prev,
+                                        deliveryPartnerName: deliveryBoy.name,
+                                        deliveryPartnerPhone: deliveryBoy.phone,
+                                        deliveryBoyId: deliveryBoy._id
+                                      }));
+                                      await loadOnlineDeliveryBoys();
+                                    }
+                                  } catch (e) {
+                                    setAssignError(e?.message || "Failed to assign delivery boy");
+                                  }
+                                }}
+                                className="w-full text-left p-2 bg-white rounded border border-gray-200 hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-2">
+                                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                    <div>
+                                      <div className="text-xs font-medium text-gray-900">{deliveryBoy.name}</div>
+                                      <div className="text-xs text-gray-500">{deliveryBoy.phone}</div>
+                                    </div>
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    {deliveryBoy.area && deliveryBoy.area}
+                                  </div>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {!["preparing", "ready_for_pickup", "delivery_rejected"].includes(editOrder?.status) && (
@@ -510,8 +648,51 @@ const Orders = () => {
                     )}
 
                     {["preparing", "ready_for_pickup", "delivery_rejected"].includes(editOrder?.status) && (
-                      <div className="text-xs text-gray-500 bg-green-50 p-2 rounded-lg border border-green-200">
-                        <strong>✅ Ready:</strong> Auto-assign will automatically find the best available delivery boy for this order.
+                      <div className="space-y-3">
+                        <div className="text-xs text-gray-500 bg-green-50 p-2 rounded-lg border border-green-200">
+                          <strong>✅ Ready:</strong> Auto-assign will automatically find the best available delivery boy for this order.
+                        </div>
+                        
+                        {/* Online Delivery Boys List */}
+                        <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-medium text-blue-800">Available Delivery Boys ({onlineDeliveryBoys.length})</h4>
+                            <button 
+                              onClick={loadOnlineDeliveryBoys}
+                              className="text-xs text-blue-600 hover:text-blue-800 underline"
+                            >
+                              Refresh
+                            </button>
+                          </div>
+                          
+                          {onlineDeliveryBoys.length === 0 ? (
+                            <div className="text-xs text-blue-600 text-center py-2">
+                              No delivery boys online
+                            </div>
+                          ) : (
+                            <div className="space-y-2 max-h-32 overflow-y-auto">
+                              {onlineDeliveryBoys.slice(0, 5).map((deliveryBoy) => (
+                                <div key={deliveryBoy._id} className="flex items-center justify-between bg-white p-2 rounded border border-blue-100">
+                                  <div className="flex items-center space-x-2">
+                                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                    <div>
+                                      <div className="text-xs font-medium text-gray-900">{deliveryBoy.name}</div>
+                                      <div className="text-xs text-gray-500">{deliveryBoy.phone}</div>
+                                    </div>
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    {deliveryBoy.area && deliveryBoy.area}
+                                  </div>
+                                </div>
+                              ))}
+                              {onlineDeliveryBoys.length > 5 && (
+                                <div className="text-xs text-blue-600 text-center">
+                                  +{onlineDeliveryBoys.length - 5} more available
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
 

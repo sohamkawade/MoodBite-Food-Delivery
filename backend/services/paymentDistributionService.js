@@ -14,8 +14,8 @@ const razorpay = new Razorpay({
 // Commission percentages
 const COMMISSION_RATES = {
   RESTAURANT: 0.80, // 80% to restaurant
-  DELIVERY_BOY: 0.15, // 15% to delivery boy
-  PLATFORM: 0.05 // 5% to platform
+  DELIVERY_BOY: 0.10, // 10% to delivery boy
+  PLATFORM: 0.10 // 10% to platform
 };
 
 /**
@@ -26,7 +26,7 @@ const COMMISSION_RATES = {
  * @param {String} deliveryBoyId - Delivery Boy ID (optional)
  * @returns {Object} Distribution result
  */
-const distributePayment = async (orderData, totalAmount, restaurantId, deliveryBoyId = null) => {
+const distributePayment = async (orderData, totalAmount, restaurantId, deliveryBoyId = null, paymentMethod = 'online') => {
   try {
     // Calculate amounts
     const restaurantAmount = Math.round(totalAmount * COMMISSION_RATES.RESTAURANT);
@@ -35,37 +35,74 @@ const distributePayment = async (orderData, totalAmount, restaurantId, deliveryB
 
     const distributionResult = {
       success: true,
-      distributions: []
+      distributions: [],
+      paymentMethod: paymentMethod
     };
 
-    // 1. Transfer to Restaurant
-    const restaurantTransfer = await transferToRestaurant(restaurantId, restaurantAmount, orderData);
-    if (restaurantTransfer.success) {
-      distributionResult.distributions.push(restaurantTransfer);
-    } else {
-      console.error('Restaurant transfer failed:', restaurantTransfer.error);
-      // Still continue with other transfers
-    }
-
-    // 2. Transfer to Delivery Boy (if assigned)
-    if (deliveryBoyId) {
-      const deliveryTransfer = await transferToDeliveryBoy(deliveryBoyId, deliveryAmount, orderData);
-      if (deliveryTransfer.success) {
-        distributionResult.distributions.push(deliveryTransfer);
+    // For COD orders, distribute directly like online payments (automatic)
+    if (paymentMethod === 'cash') {
+      console.log(`COD Order Distribution (Automatic) - Total: ₹${totalAmount}, Restaurant: ₹${restaurantAmount}, Delivery: ₹${deliveryAmount}, Platform: ₹${platformAmount}`);
+      
+      // 1. Transfer to Restaurant (direct balance update)
+      const restaurantTransfer = await transferToRestaurant(restaurantId, restaurantAmount, orderData);
+      if (restaurantTransfer.success) {
+        distributionResult.distributions.push(restaurantTransfer);
       } else {
-        console.error('Delivery boy transfer failed:', deliveryTransfer.error);
-        // Add delivery amount to platform if transfer fails
+        console.error('Restaurant transfer failed:', restaurantTransfer.error);
+      }
+
+      // 2. Transfer to Delivery Boy (if assigned) - direct balance update
+      if (deliveryBoyId) {
+        const deliveryTransfer = await transferToDeliveryBoy(deliveryBoyId, deliveryAmount, orderData);
+        if (deliveryTransfer.success) {
+          distributionResult.distributions.push(deliveryTransfer);
+        } else {
+          console.error('Delivery boy transfer failed:', deliveryTransfer.error);
+          platformAmount += deliveryAmount;
+        }
+      } else {
+        // Store delivery amount for future assignment
+        const pendingCODEntry = await createPendingCODDeliveryEntry(orderData, deliveryAmount);
+        if (pendingCODEntry.success) {
+          distributionResult.distributions.push(pendingCODEntry);
+        }
         platformAmount += deliveryAmount;
       }
-    } else {
-      // If no delivery boy, add delivery amount to platform
-      platformAmount += deliveryAmount;
-    }
 
-    // 3. Update Platform Balance
-    const platformUpdate = await updatePlatformBalance(platformAmount, orderData);
-    if (platformUpdate.success) {
-      distributionResult.distributions.push(platformUpdate);
+      // 3. Update Platform Balance (direct balance update)
+      const platformUpdate = await updatePlatformBalance(platformAmount, orderData);
+      if (platformUpdate.success) {
+        distributionResult.distributions.push(platformUpdate);
+      }
+
+    } else {
+      // Online payment distribution (existing logic)
+      // 1. Transfer to Restaurant
+      const restaurantTransfer = await transferToRestaurant(restaurantId, restaurantAmount, orderData);
+      if (restaurantTransfer.success) {
+        distributionResult.distributions.push(restaurantTransfer);
+      } else {
+        console.error('Restaurant transfer failed:', restaurantTransfer.error);
+      }
+
+      // 2. Transfer to Delivery Boy (if assigned)
+      if (deliveryBoyId) {
+        const deliveryTransfer = await transferToDeliveryBoy(deliveryBoyId, deliveryAmount, orderData);
+        if (deliveryTransfer.success) {
+          distributionResult.distributions.push(deliveryTransfer);
+        } else {
+          console.error('Delivery boy transfer failed:', deliveryTransfer.error);
+          platformAmount += deliveryAmount;
+        }
+      } else {
+        platformAmount += deliveryAmount;
+      }
+
+      // 3. Update Platform Balance
+      const platformUpdate = await updatePlatformBalance(platformAmount, orderData);
+      if (platformUpdate.success) {
+        distributionResult.distributions.push(platformUpdate);
+      }
     }
 
     return distributionResult;
@@ -329,6 +366,24 @@ const getUserBalance = async (userId, userType) => {
       case 'admin':
         user = await Admin.findById(userId);
         break;
+      case 'user':
+        // For regular users, calculate total spent from transactions
+        const Transaction = require('../models/Transaction');
+        const userTransactions = await Transaction.find({ 
+          user: userId, 
+          type: 'payment' 
+        });
+        
+        const totalSpent = userTransactions.reduce((sum, transaction) => {
+          return sum + (transaction.amount || 0);
+        }, 0);
+        
+        return {
+          success: true,
+          balance: 0, // Users don't have balance
+          totalEarnings: totalSpent, // Total spent amount
+          bankDetails: null // Users don't have bank details
+        };
       default:
         return { success: false, error: 'Invalid user type' };
     }
@@ -487,6 +542,172 @@ const getRecipientPayouts = async (recipientType, recipientId, limit = 50) => {
   }
 };
 
+/**
+ * Update restaurant balance for COD orders (pending settlement)
+ */
+const updateRestaurantBalanceCOD = async (restaurantId, amount, orderData) => {
+  try {
+    const restaurant = await Restaurant.findById(restaurantId);
+    if (!restaurant) {
+      return { success: false, error: 'Restaurant not found' };
+    }
+
+    // Update pending amount (will be settled when cash is collected)
+    restaurant.pendingAmount = (restaurant.pendingAmount || 0) + amount;
+    restaurant.totalOrders = (restaurant.totalOrders || 0) + 1;
+    
+    // Add to recent transactions
+    restaurant.recentTransactions = restaurant.recentTransactions || [];
+    restaurant.recentTransactions.push({
+      date: new Date(),
+      type: 'order_payment',
+      amount: amount,
+      status: 'pending',
+      description: `COD order #${orderData.orderId} - Pending cash collection`
+    });
+    
+    // Keep only last 10 transactions
+    if (restaurant.recentTransactions.length > 10) {
+      restaurant.recentTransactions = restaurant.recentTransactions.slice(-10);
+    }
+    
+    await restaurant.save();
+
+    return {
+      success: true,
+      type: 'restaurant_cod',
+      amount: amount,
+      message: `Restaurant pending amount updated: +₹${amount} (COD)`
+    };
+
+  } catch (error) {
+    console.error('Restaurant COD balance update error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Update delivery boy balance for COD orders (pending settlement)
+ */
+const updateDeliveryBoyBalanceCOD = async (deliveryBoyId, amount, orderData) => {
+  try {
+    const deliveryBoy = await DeliveryBoy.findById(deliveryBoyId);
+    if (!deliveryBoy) {
+      return { success: false, error: 'Delivery boy not found' };
+    }
+
+    // Update pending amount (will be settled when cash is collected)
+    deliveryBoy.pendingAmount = (deliveryBoy.pendingAmount || 0) + amount;
+    deliveryBoy.totalOrders = (deliveryBoy.totalOrders || 0) + 1;
+    
+    // Add to recent transactions
+    deliveryBoy.recentTransactions = deliveryBoy.recentTransactions || [];
+    deliveryBoy.recentTransactions.push({
+      date: new Date(),
+      type: 'delivery_fee',
+      amount: amount,
+      status: 'pending',
+      description: `COD delivery fee for order #${orderData.orderId} - Pending cash collection`
+    });
+    
+    // Keep only last 10 transactions
+    if (deliveryBoy.recentTransactions.length > 10) {
+      deliveryBoy.recentTransactions = deliveryBoy.recentTransactions.slice(-10);
+    }
+    
+    await deliveryBoy.save();
+
+    return {
+      success: true,
+      type: 'delivery_boy_cod',
+      amount: amount,
+      message: `Delivery boy pending amount updated: +₹${amount} (COD)`
+    };
+
+  } catch (error) {
+    console.error('Delivery boy COD balance update error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Update platform balance for COD orders (pending settlement)
+ */
+const updatePlatformBalanceCOD = async (amount, orderData) => {
+  try {
+    const Admin = require('../models/Admin');
+    const admin = await Admin.findOne();
+    
+    if (!admin) {
+      return { success: false, error: 'Admin not found' };
+    }
+
+    // Update pending amount (will be settled when cash is collected)
+    admin.pendingAmount = (admin.pendingAmount || 0) + amount;
+    
+    // Add to recent transactions
+    admin.recentTransactions = admin.recentTransactions || [];
+    admin.recentTransactions.push({
+      date: new Date(),
+      type: 'commission',
+      amount: amount,
+      status: 'pending',
+      description: `COD platform commission for order #${orderData.orderId} - Pending cash collection`
+    });
+    
+    // Keep only last 10 transactions
+    if (admin.recentTransactions.length > 10) {
+      admin.recentTransactions = admin.recentTransactions.slice(-10);
+    }
+    
+    await admin.save();
+
+    return {
+      success: true,
+      type: 'platform_cod',
+      amount: amount,
+      message: `Platform pending amount updated: +₹${amount} (COD)`
+    };
+
+  } catch (error) {
+    console.error('Platform COD balance update error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+/**
+ * Create pending COD entry for delivery boy (when not assigned yet)
+ */
+const createPendingCODDeliveryEntry = async (orderData, amount) => {
+  try {
+    // Store pending COD delivery amount in Order model for future assignment
+    const Order = require('../models/Order');
+    const order = await Order.findOne({ orderId: orderData.orderId });
+    
+    if (!order) {
+      return { success: false, error: 'Order not found' };
+    }
+
+    // Store pending delivery amount in order metadata
+    order.pendingDeliveryAmount = amount;
+    order.pendingDeliveryStatus = 'unassigned';
+    await order.save();
+
+    console.log(`Pending COD delivery entry created for order ${orderData.orderId}: ₹${amount}`);
+
+    return {
+      success: true,
+      type: 'pending_delivery_cod',
+      amount: amount,
+      message: `Pending COD delivery entry created: ₹${amount} (will be assigned to delivery boy)`
+    };
+
+  } catch (error) {
+    console.error('Pending COD delivery entry creation error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 module.exports = {
   distributePayment,
   getUserBalance,
@@ -494,5 +715,8 @@ module.exports = {
   handlePayoutWebhook,
   getPayoutStatus,
   getRecipientPayouts,
+  updateRestaurantBalanceCOD,
+  updateDeliveryBoyBalanceCOD,
+  updatePlatformBalanceCOD,
   COMMISSION_RATES
 };

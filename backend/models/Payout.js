@@ -112,9 +112,7 @@ const payoutSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Indexes for better query performance
-payoutSchema.index({ razorpayPayoutId: 1 });
-payoutSchema.index({ referenceId: 1 });
+// Indexes for better query performance (excluding unique fields which already have indexes)
 payoutSchema.index({ recipientType: 1, recipientId: 1 });
 payoutSchema.index({ status: 1 });
 payoutSchema.index({ orderId: 1 });

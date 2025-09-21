@@ -800,6 +800,11 @@ export const deliveryBoysAPI = {
     const qs = new URLSearchParams(params).toString();
     return apiRequest(`/delivery-boys/online${qs ? `?${qs}` : ''}`);
   },
+  getBalance: async () => apiRequest('/balance', {
+    headers: {
+      'Authorization': `Bearer ${localStorage.getItem('deliveryToken')}`
+    }
+  }),
 };
 
 export const usersAPI = {

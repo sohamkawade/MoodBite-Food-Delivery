@@ -9,13 +9,11 @@ import {
   MdMenu, 
   MdClose,
   MdHistory,
-  MdAttachMoney,
 } from "react-icons/md";
 import { GiKnifeFork } from "react-icons/gi";
 import Dashboard from "./Dashboard";
 import Profile from "./Profile";
 import OrderHistory from "./OrderHistory";
-import Earnings from "./Earnings";
 import BankDetails from "./BankDetails";
 import Navbar from "../../components/Navbar";
 
@@ -34,7 +32,6 @@ const DeliveryLayout = () => {
     const path = location.pathname;
     if (path.includes('/profile')) setActiveTab('profile');
     else if (path.includes('/history')) setActiveTab('history');
-    else if (path.includes('/earnings')) setActiveTab('earnings');
     else if (path.includes('/bank-details')) setActiveTab('bank-details');
     else setActiveTab('dashboard');
   }, [location]);
@@ -84,7 +81,6 @@ const DeliveryLayout = () => {
       <Route path="profile" element={<Profile />} />
       <Route path="dashboard" element={<Dashboard />} />
       <Route path="history" element={<OrderHistory />} />
-      <Route path="earnings" element={<Earnings />} />
       <Route path="bank-details" element={<BankDetails />} />
       <Route path="*" element={<Navigate to="/delivery/dashboard" replace />} />
     </Routes>
@@ -94,7 +90,6 @@ const DeliveryLayout = () => {
     { id: "profile", label: "Profile", icon: <MdPerson size={24} />, path: "/delivery/profile" },
     { id: "dashboard", label: "Dashboard", icon: <MdDashboard size={24} />, path: "/delivery/dashboard" },
     { id: "history", label: "Order History", icon: <MdHistory size={24} />, path: "/delivery/history" },
-    { id: "earnings", label: "Earnings", icon: <MdAttachMoney size={24} />, path: "/delivery/earnings" },
     { id: "bank-details", label: "Bank Details", icon: <MdAccountBalance size={24} />, path: "/delivery/bank-details" },
   ];
 

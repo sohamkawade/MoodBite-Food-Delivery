@@ -31,6 +31,15 @@ const DeliveryDashboard = () => {
     weeklyEarnings: 0,
     averageRating: 0,
   });
+  const [earningsData, setEarningsData] = useState({
+    balance: 0,
+    totalEarnings: 0,
+    pendingAmount: 0,
+    totalOrders: 0,
+    lastPayout: null,
+    nextPayoutDate: null,
+    recentTransactions: []
+  });
   const [isOnline, setIsOnline] = useState(false);
   const [showOTPModal, setShowOTPModal] = useState(false);
   const [currentOrder, setCurrentOrder] = useState(null);
@@ -46,13 +55,15 @@ const DeliveryDashboard = () => {
   const fetchDeliveryData = async () => {
     try {
       setLoading(true);
-      const [profileRes, ordersRes] = await Promise.all([
+      const [profileRes, ordersRes, earningsRes] = await Promise.all([
         deliveryAuthAPI.getProfile(),
         orderAPI.getDeliveryOrders(),
+        deliveryBoysAPI.getBalance(),
       ]);
 
       console.log("Profile Response:", profileRes);
       console.log("Orders Response:", ordersRes);
+      console.log("Earnings Response:", earningsRes);
 
       if (profileRes.success) {
         setDeliveryBoy(profileRes.data);
@@ -63,9 +74,19 @@ const DeliveryDashboard = () => {
 
       if (ordersRes.success) {
         setOrders(ordersRes.data);
-        calculateStats(ordersRes.data);
       } else {
         console.error("Orders fetch failed:", ordersRes.message);
+      }
+
+      if (earningsRes.success) {
+        setEarningsData(earningsRes.data);
+      } else {
+        console.error("Earnings fetch failed:", earningsRes.message);
+      }
+
+      // Calculate stats after both orders and earnings data are loaded
+      if (ordersRes.success && earningsRes.success) {
+        calculateStats(ordersRes.data, earningsRes.data);
       }
     } catch (error) {
       console.error("Failed to fetch delivery data:", error);
@@ -74,8 +95,9 @@ const DeliveryDashboard = () => {
     }
   };
 
-  const calculateStats = (ordersData) => {
+  const calculateStats = (ordersData, earningsDataParam = null) => {
     console.log("Calculating stats for orders:", ordersData);
+    console.log("Using earnings data:", earningsDataParam || earningsData);
     
     const totalDeliveries = ordersData.length;
     const completedDeliveries = ordersData.filter(
@@ -88,24 +110,56 @@ const DeliveryDashboard = () => {
         )
     ).length;
 
+    // Use the passed earnings data or fall back to state
+    const currentEarningsData = earningsDataParam || earningsData;
+
+    // Calculate earnings from recent transactions instead of order.deliveryFee
     const today = new Date();
-    const todayEarnings = ordersData
-      .filter((order) => {
+    let todayEarnings = 0;
+    let weeklyEarnings = 0;
+
+    // Try to get earnings from recent transactions first
+    if (currentEarningsData.recentTransactions && currentEarningsData.recentTransactions.length > 0) {
+      todayEarnings = currentEarningsData.recentTransactions
+        .filter((transaction) => {
+          const transactionDate = new Date(transaction.date);
+          return (
+            transaction.type === 'delivery_fee' &&
+            transaction.status === 'completed' &&
+            transactionDate.toDateString() === today.toDateString()
+          );
+        })
+        .reduce((sum, transaction) => sum + (transaction.amount || 0), 0);
+
+      const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+      weeklyEarnings = currentEarningsData.recentTransactions
+        .filter((transaction) => {
+          const transactionDate = new Date(transaction.date);
+          return (
+            transaction.type === 'delivery_fee' &&
+            transaction.status === 'completed' &&
+            transactionDate >= weekAgo
+          );
+        })
+        .reduce((sum, transaction) => sum + (transaction.amount || 0), 0);
+    } else {
+      // Fallback: Calculate from completed orders (10% commission)
+      const todayOrders = ordersData.filter((order) => {
         const orderDate = new Date(order.updatedAt);
         return (
           order.status === "delivered" &&
           orderDate.toDateString() === today.toDateString()
         );
-      })
-      .reduce((sum, order) => sum + (order.deliveryFee || 0), 0);
+      });
+      todayEarnings = todayOrders.reduce((sum, order) => sum + Math.round(order.total * 0.10), 0);
 
-    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const weeklyEarnings = ordersData
-      .filter((order) => {
+      const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const weeklyOrders = ordersData.filter((order) => {
         const orderDate = new Date(order.updatedAt);
         return order.status === "delivered" && orderDate >= weekAgo;
-      })
-      .reduce((sum, order) => sum + (order.deliveryFee || 0), 0);
+      });
+      weeklyEarnings = weeklyOrders.reduce((sum, order) => sum + Math.round(order.total * 0.10), 0);
+    }
 
     const averageRating =
       ordersData
@@ -123,6 +177,8 @@ const DeliveryDashboard = () => {
     };
 
     console.log("Calculated stats:", calculatedStats);
+    console.log("Today earnings calculation:", todayEarnings);
+    console.log("Weekly earnings calculation:", weeklyEarnings);
     setStats(calculatedStats);
   };
 
@@ -389,7 +445,7 @@ const DeliveryDashboard = () => {
             <div>
               <p className="text-xs sm:text-sm font-medium text-gray-600">Today's Earnings</p>
               <p className="text-xl sm:text-2xl font-bold text-gray-900">
-                ₹{stats.todayEarnings.toLocaleString()}
+                ₹{stats.todayEarnings?.toLocaleString() || 0}
               </p>
             </div>
             <div className="p-2 sm:p-3 bg-green-100 rounded-lg">
@@ -403,7 +459,7 @@ const DeliveryDashboard = () => {
             <div>
               <p className="text-xs sm:text-sm font-medium text-gray-600">Weekly Earnings</p>
               <p className="text-xl sm:text-2xl font-bold text-gray-900">
-                ₹{stats.weeklyEarnings.toLocaleString()}
+                ₹{stats.weeklyEarnings?.toLocaleString() || 0}
               </p>
             </div>
             <div className="p-2 sm:p-3 bg-blue-100 rounded-lg">
@@ -415,13 +471,13 @@ const DeliveryDashboard = () => {
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-4 sm:p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs sm:text-sm font-medium text-gray-600">Pending Orders</p>
+              <p className="text-xs sm:text-sm font-medium text-gray-600">Completed Deliveries</p>
               <p className="text-xl sm:text-2xl font-bold text-gray-900">
-                {stats.pendingDeliveries}
+                {stats.completedDeliveries || 0}
               </p>
             </div>
             <div className="p-2 sm:p-3 bg-yellow-100 rounded-lg">
-              <MdSchedule size={24} className="text-yellow-600" />
+              <MdCheckCircle size={24} className="text-yellow-600" />
             </div>
           </div>
         </div>
@@ -431,13 +487,101 @@ const DeliveryDashboard = () => {
             <div>
               <p className="text-xs sm:text-sm font-medium text-gray-600">Total Deliveries</p>
               <p className="text-xl sm:text-2xl font-bold text-gray-900">
-                {stats.totalDeliveries}
+                {stats.totalDeliveries || 0}
               </p>
             </div>
             <div className="p-2 sm:p-3 bg-purple-100 rounded-lg">
               <MdLocalShipping size={24} className="text-purple-600" />
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Earnings Section */}
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+        <div className="border-b border-gray-200">
+          <div className="px-4 sm:px-6 py-4">
+            <h3 className="text-lg sm:text-xl font-bold text-gray-900">Earnings Overview</h3>
+            <p className="text-gray-600 text-sm sm:text-base">Your delivery earnings and transaction history</p>
+          </div>
+        </div>
+
+        <div className="p-4 sm:p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Balance Summary */}
+            <div className="space-y-4">
+              <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
+                <h4 className="text-sm font-semibold text-green-800 mb-2">Available Balance</h4>
+                <p className="text-2xl font-bold text-green-900">₹{earningsData.balance?.toLocaleString() || 0}</p>
+                <p className="text-xs text-green-700 mt-1">Ready for payout</p>
+              </div>
+              
+              <div className="bg-gradient-to-r from-orange-50 to-orange-100 rounded-lg p-4 border border-orange-200">
+                <h4 className="text-sm font-semibold text-orange-800 mb-2">Calculated Earnings</h4>
+                <p className="text-2xl font-bold text-orange-900">₹{stats.weeklyEarnings?.toLocaleString() || 0}</p>
+                <p className="text-xs text-orange-700 mt-1">From {stats.completedDeliveries || 0} completed deliveries</p>
+              </div>
+              
+              <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
+                <h4 className="text-sm font-semibold text-blue-800 mb-2">Pending Settlement</h4>
+                <p className="text-2xl font-bold text-blue-900">₹{earningsData.pendingAmount?.toLocaleString() || 0}</p>
+                <p className="text-xs text-blue-700 mt-1">COD orders pending cash collection</p>
+              </div>
+            </div>
+
+            {/* Recent Transactions */}
+            <div>
+              <h4 className="text-sm font-semibold text-gray-800 mb-3">Recent Transactions</h4>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {earningsData.recentTransactions && earningsData.recentTransactions.length > 0 ? (
+                  earningsData.recentTransactions.slice(0, 5).map((transaction, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-2 h-2 rounded-full ${
+                          transaction.status === 'completed' ? 'bg-green-500' : 
+                          transaction.status === 'pending' ? 'bg-yellow-500' : 'bg-red-500'
+                        }`}></div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900 capitalize">{transaction.type?.replace('_', ' ')}</p>
+                          <p className="text-xs text-gray-500">{transaction.description}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-gray-900">₹{transaction.amount}</p>
+                        <p className="text-xs text-gray-500 capitalize">{transaction.status}</p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-4 text-gray-500">
+                    <p className="text-sm">No recent transactions</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Payout Information */}
+          {earningsData.lastPayout && (
+            <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-800">Last Payout</h4>
+                  <p className="text-xs text-gray-600">
+                    {new Date(earningsData.lastPayout).toLocaleDateString()}
+                  </p>
+                </div>
+                {earningsData.nextPayoutDate && (
+                  <div className="text-right">
+                    <h4 className="text-sm font-semibold text-gray-800">Next Payout</h4>
+                    <p className="text-xs text-gray-600">
+                      {new Date(earningsData.nextPayoutDate).toLocaleDateString()}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

@@ -27,7 +27,7 @@ const transactionSchema = new mongoose.Schema({
   },
   paymentMethod: {
     type: String,
-    enum: ['upi', 'card', 'cash', 'wallet'],
+    enum: ['upi', 'card', 'cash', 'wallet', 'online', 'razorpay'],
     required: true
   },
   description: {

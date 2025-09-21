@@ -249,125 +249,14 @@ const BankDetails = () => {
                 <MdAccountBalance size={24} className="text-orange-600 sm:w-7 sm:h-7" />
               </div>
               <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Delivery Earnings & Payments</h1>
-                <p className="text-gray-600 text-sm">Track your delivery earnings and manage bank details</p>
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Bank Details</h1>
+                <p className="text-gray-600 text-sm">Manage your bank account details for payouts</p>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Earnings Overview */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Earnings Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-600 text-sm font-medium">Total Earnings</p>
-                    <p className="text-2xl font-bold text-gray-900">₹{deliveryInfo.totalEarnings.toLocaleString()}</p>
-                  </div>
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <MdTrendingUp size={24} className="text-green-600" />
-                  </div>
-                </div>
-              </div>
-              
-              <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-600 text-sm font-medium">Pending Amount</p>
-                    <p className="text-2xl font-bold text-gray-900">₹{deliveryInfo.pendingAmount.toLocaleString()}</p>
-                  </div>
-                  <div className="p-2 bg-yellow-100 rounded-lg">
-                    <MdPayment size={24} className="text-yellow-600" />
-                  </div>
-                </div>
-              </div>
-              
-              <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-600 text-sm font-medium">Total Deliveries</p>
-                    <p className="text-2xl font-bold text-gray-900">{deliveryInfo.totalOrders}</p>
-                  </div>
-                  <div className="p-2 bg-purple-100 rounded-lg">
-                    <MdHistory size={24} className="text-purple-600" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Commission Info */}
-            <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <div className="p-1.5 bg-blue-100 rounded-lg mr-3">
-                  <MdInfo size={20} className="text-blue-600" />
-                </div>
-                Delivery Commission Details
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-600">Your Commission Rate</p>
-                  <p className="text-xl font-semibold text-blue-600">{deliveryInfo.commissionRate}%</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Next Payout</p>
-                  <p className="text-xl font-semibold text-gray-900">
-                    {deliveryInfo.nextPayoutDate ? new Date(deliveryInfo.nextPayoutDate).toLocaleDateString() : 'Not scheduled'}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Transaction History */}
-            <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                  <div className="p-1.5 bg-green-100 rounded-lg mr-3">
-                    <MdHistory size={20} className="text-green-600" />
-                  </div>
-                  Recent Delivery Payments
-                </h3>
-                <button
-                  onClick={() => setShowTransactionHistory(!showTransactionHistory)}
-                  className="text-blue-500 hover:text-blue-600 text-sm font-medium"
-                >
-                  {showTransactionHistory ? 'Hide' : 'View All'}
-                </button>
-              </div>
-              
-              {recentTransactions.length > 0 ? (
-                <div className="space-y-3">
-                  {recentTransactions.slice(0, showTransactionHistory ? recentTransactions.length : 3).map((transaction, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                          <MdPayment size={16} className="text-green-600" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">{transaction.description || transaction.type}</p>
-                          <p className="text-xs text-gray-500">{new Date(transaction.date).toLocaleDateString()}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-semibold text-gray-900">₹{transaction.amount.toLocaleString()}</p>
-                        <p className={`text-xs ${transaction.status === 'completed' ? 'text-green-600' : 'text-yellow-600'}`}>
-                          {transaction.status}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <MdHistory size={48} className="mx-auto mb-2 text-gray-300" />
-                  <p>No delivery payments yet</p>
-                </div>
-              )}
-            </div>
-          </div>
-
+        <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
           {/* Bank Details Card */}
           <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
             <div className="flex items-center justify-between mb-6">

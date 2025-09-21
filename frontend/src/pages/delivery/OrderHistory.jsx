@@ -65,7 +65,6 @@ const OrderHistory = () => {
   });
 
   const completedOrders = filteredOrders.filter(order => order.status === 'delivered');
-  const totalEarnings = completedOrders.reduce((sum, order) => sum + (order.deliveryFee || 0), 0);
   const totalDeliveries = completedOrders.length;
 
   if (loading) {
@@ -90,12 +89,12 @@ const OrderHistory = () => {
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Order History</h1>
-              <p className="text-gray-600 text-sm">View your delivery history and earnings</p>
+              <p className="text-gray-600 text-sm">View your delivery order history</p>
             </div>
           </div>
           <div className="text-left sm:text-right">
-            <p className="text-xs sm:text-sm text-gray-600">Total Earnings</p>
-            <p className="text-xl sm:text-2xl font-bold text-green-600">₹{totalEarnings.toLocaleString()}</p>
+            <p className="text-xs sm:text-sm text-gray-600">Total Orders</p>
+            <p className="text-xl sm:text-2xl font-bold text-blue-600">{filteredOrders.length}</p>
           </div>
         </div>
       </div>
@@ -119,8 +118,8 @@ const OrderHistory = () => {
               <MdAttachMoney size={20} className="text-blue-600" />
             </div>
             <div>
-              <div className="text-xl sm:text-2xl font-bold text-gray-900">₹{totalEarnings.toLocaleString()}</div>
-              <div className="text-xs sm:text-sm text-gray-600">Total Earnings</div>
+              <div className="text-xl sm:text-2xl font-bold text-gray-900">{filteredOrders.filter(order => order.status === 'delivered').length}</div>
+              <div className="text-xs sm:text-sm text-gray-600">Completed Orders</div>
             </div>
           </div>
         </div>

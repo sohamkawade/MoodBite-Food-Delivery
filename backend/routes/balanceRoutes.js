@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getBalance, updateBankDetailsController, deleteBankDetailsController, getAllBalances, getTransactionHistory, validateBankAccount, validateBankAccountPublic, getCommissionRates } = require('../controllers/balanceController');
+const { getBalance, updateBankDetailsController, deleteBankDetailsController, getAllBalances, getTransactionHistory, validateBankAccount, validateBankAccountPublic, getCommissionRates, settleCODOrder, updateDeliveryBoyEarningsForExistingOrders, fixExistingCODOrders } = require('../controllers/balanceController');
 const { authenticateToken } = require('../middlewares/authMiddleware');
 
 // Get balance for any user type
@@ -36,5 +36,40 @@ router.get('/admin/all', authenticateToken, (req, res, next) => {
   next();
 }, getAllBalances);
 
+// COD Settlement (Admin only)
+router.post('/settle-cod/:orderId', authenticateToken, (req, res, next) => {
+  // Check if user is admin
+  if (req.user.type !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      message: 'Access denied. Admin only.'
+    });
+  }
+  next();
+}, settleCODOrder);
+
+// Update delivery boy earnings for existing orders (Admin only)
+router.post('/update-delivery-earnings/:deliveryBoyId', authenticateToken, (req, res, next) => {
+  // Check if user is admin
+  if (req.user.type !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      message: 'Access denied. Admin only.'
+    });
+  }
+  next();
+}, updateDeliveryBoyEarningsForExistingOrders);
+
+// Fix existing COD orders (Admin only)
+router.post('/fix-cod-orders', authenticateToken, (req, res, next) => {
+  // Check if user is admin
+  if (req.user.type !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      message: 'Access denied. Admin only.'
+    });
+  }
+  next();
+}, fixExistingCODOrders);
 
 module.exports = router;

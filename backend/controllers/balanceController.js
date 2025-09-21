@@ -42,7 +42,10 @@ const getBalance = async (req, res) => {
           
           const todayOrders = await Order.find({
             createdAt: { $gte: today, $lt: tomorrow },
-            paymentStatus: 'completed'
+            $or: [
+              { paymentStatus: 'completed' },
+              { paymentMethod: 'cash', status: { $in: ['delivered', 'completed'] } }
+            ]
           });
           
           todayEarnings = todayOrders.reduce((sum, order) => {
@@ -56,7 +59,10 @@ const getBalance = async (req, res) => {
           
           const weekOrders = await Order.find({
             createdAt: { $gte: startOfWeek, $lt: now },
-            paymentStatus: 'completed'
+            $or: [
+              { paymentStatus: 'completed' },
+              { paymentMethod: 'cash', status: { $in: ['delivered', 'completed'] } }
+            ]
           });
           
           thisWeekEarnings = weekOrders.reduce((sum, order) => {
@@ -68,7 +74,10 @@ const getBalance = async (req, res) => {
           
           const monthOrders = await Order.find({
             createdAt: { $gte: startOfMonth, $lt: now },
-            paymentStatus: 'completed'
+            $or: [
+              { paymentStatus: 'completed' },
+              { paymentMethod: 'cash', status: { $in: ['delivered', 'completed'] } }
+            ]
           });
           
           thisMonthEarnings = monthOrders.reduce((sum, order) => {
@@ -77,14 +86,17 @@ const getBalance = async (req, res) => {
           
           // Recent transactions (last 10 orders)
           const recentOrders = await Order.find({
-            paymentStatus: 'completed'
+            $or: [
+              { paymentStatus: 'completed' },
+              { paymentMethod: 'cash', status: { $in: ['delivered', 'completed'] } }
+            ]
           })
           .sort({ createdAt: -1 })
           .limit(10)
-          .select('orderId total createdAt');
+          .select('orderId total createdAt paymentMethod');
           
           recentTransactions = recentOrders.map(order => ({
-            description: `Order ${order.orderId}`,
+            description: `Order ${order.orderId} (${order.paymentMethod === 'cash' ? 'COD' : 'Online'})`,
             type: 'platform_commission',
             amount: order.total * 0.05,
             date: order.createdAt,
@@ -542,13 +554,307 @@ const getCommissionRates = async (req, res) => {
   }
 };
 
-module.exports = {
-  getBalance,
-  updateBankDetailsController,
+// COD Settlement - Mark cash as collected and settle pending amounts
+const settleCODOrder = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { collectedAmount } = req.body;
+    
+    const Order = require('../models/Order');
+    const order = await Order.findById(orderId).populate('restaurant assignedDeliveryBoy');
+    
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+    
+    if (order.paymentMethod !== 'cash') {
+      return res.status(400).json({ success: false, message: 'This order is not a COD order' });
+    }
+    
+    if (order.paymentStatus !== 'pending') {
+      return res.status(400).json({ success: false, message: 'This order has already been settled' });
+    }
+    
+    // Verify collected amount matches order total
+    if (collectedAmount !== order.total) {
+      return res.status(400).json({ 
+        success: false, 
+        message: `Collected amount (₹${collectedAmount}) does not match order total (₹${order.total})` 
+      });
+    }
+    
+    // Update order payment status
+    order.paymentStatus = 'completed';
+    await order.save();
+    
+    // Calculate distribution amounts
+    const restaurantAmount = Math.round(order.total * 0.80); // 80% to restaurant
+    const deliveryAmount = Math.round(order.total * 0.10); // 10% to delivery boy
+    const platformAmount = order.total - restaurantAmount - deliveryAmount; // 10% to platform
+    
+    // Settle restaurant pending amount
+    if (order.restaurant) {
+      order.restaurant.pendingAmount = Math.max(0, (order.restaurant.pendingAmount || 0) - restaurantAmount);
+      order.restaurant.balance = (order.restaurant.balance || 0) + restaurantAmount;
+      order.restaurant.totalEarnings = (order.restaurant.totalEarnings || 0) + restaurantAmount;
+      
+      // Update transaction status
+      if (order.restaurant.recentTransactions) {
+        const codTransaction = order.restaurant.recentTransactions.find(t => 
+          t.description && t.description.includes(order.orderId) && t.status === 'pending'
+        );
+        if (codTransaction) {
+          codTransaction.status = 'completed';
+        }
+      }
+      
+      await order.restaurant.save();
+    }
+    
+    // Settle delivery boy pending amount
+    if (order.assignedDeliveryBoy) {
+      order.assignedDeliveryBoy.pendingAmount = Math.max(0, (order.assignedDeliveryBoy.pendingAmount || 0) - deliveryAmount);
+      order.assignedDeliveryBoy.balance = (order.assignedDeliveryBoy.balance || 0) + deliveryAmount;
+      order.assignedDeliveryBoy.totalEarnings = (order.assignedDeliveryBoy.totalEarnings || 0) + deliveryAmount;
+      
+      // Update transaction status
+      if (order.assignedDeliveryBoy.recentTransactions) {
+        const codTransaction = order.assignedDeliveryBoy.recentTransactions.find(t => 
+          t.description && t.description.includes(order.orderId) && t.status === 'pending'
+        );
+        if (codTransaction) {
+          codTransaction.status = 'completed';
+        }
+      }
+      
+      await order.assignedDeliveryBoy.save();
+      
+      // Mark pending delivery as settled
+      if (order.pendingDeliveryStatus === 'assigned') {
+        order.pendingDeliveryStatus = 'settled';
+        await order.save();
+      }
+    }
+    
+    // Settle platform pending amount
+    const Admin = require('../models/Admin');
+    const admin = await Admin.findOne();
+    if (admin) {
+      admin.pendingAmount = Math.max(0, (admin.pendingAmount || 0) - platformAmount);
+      admin.balance = (admin.balance || 0) + platformAmount;
+      admin.totalEarnings = (admin.totalEarnings || 0) + platformAmount;
+      
+      // Update transaction status
+      if (admin.recentTransactions) {
+        const codTransaction = admin.recentTransactions.find(t => 
+          t.description && t.description.includes(order.orderId) && t.status === 'pending'
+        );
+        if (codTransaction) {
+          codTransaction.status = 'completed';
+        }
+      }
+      
+      await admin.save();
+    }
+    
+    console.log(`COD Order ${order.orderId} settled: Restaurant ₹${restaurantAmount}, Delivery ₹${deliveryAmount}, Platform ₹${platformAmount}`);
+    
+    res.json({
+      success: true,
+      message: 'COD order settled successfully',
+      data: {
+        orderId: order.orderId,
+        totalAmount: order.total,
+        distribution: {
+          restaurant: restaurantAmount,
+          deliveryBoy: deliveryAmount,
+          platform: platformAmount
+        }
+      }
+    });
+    
+  } catch (error) {
+    console.error('COD settlement error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to settle COD order'
+    });
+  }
+};
+
+// Update delivery boy earnings for existing orders
+const updateDeliveryBoyEarningsForExistingOrders = async (req, res) => {
+  try {
+    const { deliveryBoyId } = req.params;
+    
+    const Order = require('../models/Order');
+    const DeliveryBoy = require('../models/DeliveryBoy');
+    
+    // Find delivery boy
+    const deliveryBoy = await DeliveryBoy.findById(deliveryBoyId);
+    if (!deliveryBoy) {
+      return res.status(404).json({ success: false, message: 'Delivery boy not found' });
+    }
+    
+    // Find all completed orders assigned to this delivery boy
+    const completedOrders = await Order.find({
+      assignedDeliveryBoy: deliveryBoyId,
+      status: 'delivered',
+      $or: [
+        { paymentStatus: 'completed' },
+        { paymentMethod: 'cash' }
+      ]
+    }).populate('restaurant');
+    
+    let updatedCount = 0;
+    let totalEarnings = 0;
+    
+    for (const order of completedOrders) {
+      try {
+        // Calculate delivery boy amount
+        const deliveryAmount = Math.round(order.total * 0.10); // 10% commission
+        
+        // Check if delivery boy already has earnings for this order
+        const hasExistingEarning = deliveryBoy.recentTransactions?.some(t => 
+          t.description && t.description.includes(order.orderId)
+        );
+        
+        if (!hasExistingEarning) {
+          // Update delivery boy balance and earnings
+          deliveryBoy.balance = (deliveryBoy.balance || 0) + deliveryAmount;
+          deliveryBoy.totalEarnings = (deliveryBoy.totalEarnings || 0) + deliveryAmount;
+          deliveryBoy.totalOrders = (deliveryBoy.totalOrders || 0) + 1;
+          
+          // Add to recent transactions
+          deliveryBoy.recentTransactions = deliveryBoy.recentTransactions || [];
+          deliveryBoy.recentTransactions.push({
+            date: new Date(),
+            type: 'delivery_fee',
+            amount: deliveryAmount,
+            status: 'completed',
+            description: `Delivery fee for order #${order.orderId} - ${order.paymentMethod === 'cash' ? 'COD' : 'Online'}`
+          });
+          
+          // Keep only last 10 transactions
+          if (deliveryBoy.recentTransactions.length > 10) {
+            deliveryBoy.recentTransactions = deliveryBoy.recentTransactions.slice(-10);
+          }
+          
+          updatedCount++;
+          totalEarnings += deliveryAmount;
+        }
+      } catch (orderError) {
+        console.error(`Error updating earnings for order ${order.orderId}:`, orderError);
+      }
+    }
+    
+    await deliveryBoy.save();
+    
+    res.json({
+      success: true,
+      message: `Updated earnings for ${updatedCount} orders`,
+      data: {
+        deliveryBoyId,
+        deliveryBoyName: deliveryBoy.name,
+        updatedOrders: updatedCount,
+        totalEarningsAdded: totalEarnings,
+        currentBalance: deliveryBoy.balance,
+        totalEarnings: deliveryBoy.totalEarnings
+      }
+    });
+    
+  } catch (error) {
+    console.error('Update delivery boy earnings error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update delivery boy earnings'
+    });
+  }
+};
+
+// Fix existing COD orders - automatic distribution
+const fixExistingCODOrders = async (req, res) => {
+  try {
+    const Order = require('../models/Order');
+    const { distributePayment } = require('../services/paymentDistributionService');
+    
+    // Find all COD orders that need automatic distribution
+    const codOrders = await Order.find({
+      paymentMethod: 'cash',
+      status: { $in: ['delivered', 'completed'] }
+    }).populate('restaurant assignedDeliveryBoy');
+    
+    let updatedCount = 0;
+    let totalDistributed = 0;
+    
+    for (const order of codOrders) {
+      try {
+        // Calculate amounts
+        const restaurantAmount = Math.round(order.total * 0.80); // 80%
+        const deliveryAmount = Math.round(order.total * 0.10); // 10%
+        const platformAmount = order.total - restaurantAmount - deliveryAmount; // 10%
+        
+        // Check if already distributed
+        const hasRestaurantEarning = order.restaurant?.recentTransactions?.some(t => 
+          t.description && t.description.includes(order.orderId)
+        );
+        
+        if (!hasRestaurantEarning) {
+          // Automatic distribution for COD order
+          const distributionResult = await distributePayment(
+            {
+              orderId: order.orderId,
+              customerId: order.customer,
+              restaurantId: order.restaurant._id,
+              totalAmount: order.total,
+              paymentMethod: 'cash'
+            },
+            order.total,
+            order.restaurant._id,
+            order.assignedDeliveryBoy?._id || null,
+            'cash'
+          );
+          
+          if (distributionResult.success) {
+            updatedCount++;
+            totalDistributed += order.total;
+            console.log(`Automatically distributed COD order ${order.orderId}: ₹${order.total}`);
+          }
+        }
+      } catch (orderError) {
+        console.error(`Error distributing COD order ${order.orderId}:`, orderError);
+      }
+    }
+    
+    res.json({
+      success: true,
+      message: `Automatically distributed ${updatedCount} COD orders`,
+      data: {
+        updatedOrders: updatedCount,
+        totalAmountDistributed: totalDistributed,
+        totalOrders: codOrders.length
+      }
+    });
+    
+  } catch (error) {
+    console.error('Fix existing COD orders error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fix existing COD orders'
+    });
+  }
+};
+
+module.exports = { 
+  getBalance, 
+  updateBankDetailsController, 
   deleteBankDetailsController,
   getAllBalances,
   getTransactionHistory,
   validateBankAccount,
   validateBankAccountPublic,
-  getCommissionRates
+  getCommissionRates,
+  settleCODOrder,
+  updateDeliveryBoyEarningsForExistingOrders,
+  fixExistingCODOrders
 };

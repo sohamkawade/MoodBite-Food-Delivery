@@ -139,19 +139,49 @@ const placeOrder = async (req, res) => {
 
     await order.save();
 
-    // Payment Distribution (only for successful payments)
+    // Create transaction record for user (only for successful payments)
     if (computedPaymentStatus === 'completed') {
+      try {
+        const Transaction = require('../models/Transaction');
+        const transaction = new Transaction({
+          user: userId,
+          order: order._id,
+          type: 'payment',
+          amount: total,
+          status: 'completed',
+          paymentMethod: normalizedPaymentMethod === 'online' ? 'razorpay' : normalizedPaymentMethod,
+          description: `Payment for order #${order.orderId}`,
+          transactionId: `TXN_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          razorpayPaymentId: razorpayPaymentId,
+          metadata: {
+            orderId: order.orderId,
+            restaurantId: resolvedRestaurant,
+            paymentAmount: total
+          }
+        });
+        await transaction.save();
+        console.log(`Transaction created for order ${order.orderId}: ₹${total}`);
+      } catch (transactionError) {
+        console.error('Error creating transaction:', transactionError);
+        // Don't fail the order if transaction creation fails
+      }
+    }
+
+    // Payment Distribution (for both online and COD orders)
+    if (computedPaymentStatus === 'completed' || normalizedPaymentMethod === 'cash') {
       try {
         const distributionResult = await distributePayment(
           {
             orderId: order.orderId,
             customerId: userId,
             restaurantId: resolvedRestaurant,
-            totalAmount: total
+            totalAmount: total,
+            paymentMethod: normalizedPaymentMethod
           },
           total,
           resolvedRestaurant,
-          null // deliveryBoyId will be assigned later
+          null, // deliveryBoyId will be assigned later
+          normalizedPaymentMethod
         );
         
         if (distributionResult.success) {
@@ -323,6 +353,80 @@ const adminUpdateOrder = async (req, res) => {
       );
       rider.status = 'busy';
       await rider.save();
+
+      // Create notification for delivery boy
+      try {
+        const Notification = require('../models/Notification');
+        await Notification.create({
+          toDeliveryBoy: rider._id,
+          type: 'order',
+          title: 'New Order Assigned',
+          body: `You have been assigned order #${order.orderId} from ${order.restaurant.name}. Please check your orders.`,
+          data: {
+            orderId: order._id,
+            orderNumber: order.orderId,
+            restaurantName: order.restaurant.name,
+            customerName: order.customerName,
+            totalAmount: order.total,
+            deliveryAddress: order.deliveryAddress
+          }
+        });
+        console.log(`Notification sent to delivery boy ${rider.name} for order ${order.orderId}`);
+      } catch (notifError) {
+        console.error('Failed to create delivery boy notification:', notifError);
+      }
+
+      // Update payment distribution with delivery boy (for both online and COD orders)
+      if (order.paymentStatus === 'completed' || order.paymentMethod === 'cash') {
+        try {
+          const { distributePayment } = require('../services/paymentDistributionService');
+          const distributionResult = await distributePayment(
+            {
+              orderId: order.orderId,
+              customerId: order.customer,
+              restaurantId: order.restaurant._id,
+              totalAmount: order.total,
+              paymentMethod: order.paymentMethod
+            },
+            order.total,
+            order.restaurant._id,
+            rider._id, // Now we have delivery boy ID
+            order.paymentMethod
+          );
+          
+          if (distributionResult.success) {
+            console.log('Payment distribution updated with delivery boy (manual):', distributionResult.distributions);
+          } else {
+            console.error('Payment distribution update failed (manual):', distributionResult.error);
+          }
+        } catch (distError) {
+          console.error('Payment distribution update error (manual):', distError);
+          // Don't fail the assignment if distribution update fails
+        }
+      }
+
+      // Handle pending COD delivery amount for COD orders (automatic distribution)
+      if (order.paymentMethod === 'cash' && order.pendingDeliveryAmount > 0 && order.pendingDeliveryStatus === 'unassigned') {
+        try {
+          const { transferToDeliveryBoy } = require('../services/paymentDistributionService');
+          const deliveryTransfer = await transferToDeliveryBoy(rider._id, order.pendingDeliveryAmount, {
+            orderId: order.orderId,
+            customerId: order.customer,
+            restaurantId: order.restaurant._id,
+            totalAmount: order.total,
+            paymentMethod: order.paymentMethod
+          });
+          
+          if (deliveryTransfer.success) {
+            // Mark pending delivery as assigned
+            order.pendingDeliveryStatus = 'assigned';
+            await order.save();
+            console.log('Pending COD delivery amount automatically distributed to delivery boy:', deliveryTransfer);
+          }
+        } catch (codError) {
+          console.error('Pending COD delivery transfer error:', codError);
+        }
+      }
     }
     
     const message = status === 'cancelled' && order.paymentStatus === 'completed' && order.paymentMethod !== 'cash'
@@ -417,6 +521,8 @@ const adminAutoAssignDeliveryBoy = async (req, res) => {
       assignedRestaurant: restaurantId, 
       status: 'available', 
       online: true,
+      approvalStatus: 'approved',
+      isDisabled: false,
       $or: [
         { onlineExpiresAt: { $gt: now } },
         { onlineExpiresAt: { $exists: false } }
@@ -428,6 +534,8 @@ const adminAutoAssignDeliveryBoy = async (req, res) => {
       availableRiders = await DeliveryBoy.find({ 
         status: 'available',
         online: true,
+        approvalStatus: 'approved',
+        isDisabled: false,
         $or: [
           { onlineExpiresAt: { $gt: now } },
           { onlineExpiresAt: { $exists: false } }
@@ -456,8 +564,30 @@ const adminAutoAssignDeliveryBoy = async (req, res) => {
     chosen.status = 'busy';
     await chosen.save();
 
-    // Update payment distribution with delivery boy
-    if (order.paymentStatus === 'completed') {
+    // Create notification for delivery boy
+    try {
+      const Notification = require('../models/Notification');
+      await Notification.create({
+        toDeliveryBoy: chosen._id,
+        type: 'order',
+        title: 'New Order Assigned',
+        body: `You have been assigned order #${order.orderId} from ${order.restaurant.name}. Please check your orders.`,
+        data: {
+          orderId: order._id,
+          orderNumber: order.orderId,
+          restaurantName: order.restaurant.name,
+          customerName: order.customerName,
+          totalAmount: order.total,
+          deliveryAddress: order.deliveryAddress
+        }
+      });
+      console.log(`Notification sent to delivery boy ${chosen.name} for order ${order.orderId}`);
+    } catch (notifError) {
+      console.error('Failed to create delivery boy notification:', notifError);
+    }
+
+    // Update payment distribution with delivery boy (for both online and COD orders)
+    if (order.paymentStatus === 'completed' || order.paymentMethod === 'cash') {
       try {
         const { distributePayment } = require('../services/paymentDistributionService');
         const distributionResult = await distributePayment(
@@ -465,11 +595,13 @@ const adminAutoAssignDeliveryBoy = async (req, res) => {
             orderId: order.orderId,
             customerId: order.customer,
             restaurantId: restaurantId,
-            totalAmount: order.total
+            totalAmount: order.total,
+            paymentMethod: order.paymentMethod
           },
           order.total,
           restaurantId,
-          chosen._id // Now we have delivery boy ID
+          chosen._id, // Now we have delivery boy ID
+          order.paymentMethod
         );
         
         if (distributionResult.success) {
@@ -480,6 +612,29 @@ const adminAutoAssignDeliveryBoy = async (req, res) => {
       } catch (distError) {
         console.error('Payment distribution update error:', distError);
         // Don't fail the assignment if distribution update fails
+      }
+    }
+
+    // Handle pending COD delivery amount for COD orders (automatic distribution)
+    if (order.paymentMethod === 'cash' && order.pendingDeliveryAmount > 0 && order.pendingDeliveryStatus === 'unassigned') {
+      try {
+        const { transferToDeliveryBoy } = require('../services/paymentDistributionService');
+        const deliveryTransfer = await transferToDeliveryBoy(chosen._id, order.pendingDeliveryAmount, {
+          orderId: order.orderId,
+          customerId: order.customer,
+          restaurantId: restaurantId,
+          totalAmount: order.total,
+          paymentMethod: order.paymentMethod
+        });
+        
+        if (deliveryTransfer.success) {
+          // Mark pending delivery as assigned
+          order.pendingDeliveryStatus = 'assigned';
+          await order.save();
+          console.log('Pending COD delivery amount automatically distributed to delivery boy (auto):', deliveryTransfer);
+        }
+      } catch (codError) {
+        console.error('Pending COD delivery transfer error (auto):', codError);
       }
     }
 

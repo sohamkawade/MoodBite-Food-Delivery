@@ -132,7 +132,36 @@ const adminSchema = new mongoose.Schema({
   totalEarnings: {
     type: Number,
     default: 0
-  }
+  },
+  pendingAmount: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  recentTransactions: [{
+    date: {
+      type: Date,
+      default: Date.now
+    },
+    type: {
+      type: String,
+      enum: ['commission', 'payout', 'adjustment', 'cod_settlement'],
+      default: 'commission'
+    },
+    amount: {
+      type: Number,
+      required: true
+    },
+    status: {
+      type: String,
+      enum: ['pending', 'completed', 'failed'],
+      default: 'pending'
+    },
+    description: {
+      type: String,
+      default: ''
+    }
+  }]
 
 }, {
   timestamps: true

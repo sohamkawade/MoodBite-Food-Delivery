@@ -137,6 +137,17 @@ const orderSchema = new mongoose.Schema({
     required: [true, 'Total is required'],
     min: [0, 'Total cannot be negative']
   },
+  // COD specific fields
+  pendingDeliveryAmount: {
+    type: Number,
+    default: 0,
+    min: [0, 'Pending delivery amount cannot be negative']
+  },
+  pendingDeliveryStatus: {
+    type: String,
+    enum: ['unassigned', 'assigned', 'settled'],
+    default: 'unassigned'
+  },
   orderDate: {
     type: Date,
     default: Date.now
