@@ -2,6 +2,7 @@ const Restaurant = require('../models/Restaurant');
 const DeliveryBoy = require('../models/DeliveryBoy');
 const bcrypt = require('bcryptjs');
 const { sendApprovalEmail, sendRejectionEmail } = require('../utils/emailService');
+const { encryptBankDetails, decryptBankDetails } = require('../utils/encryption');
 
 const getCoordinatesFromAddress = async (address) => {
   try {
@@ -117,7 +118,8 @@ const registerRestaurant = async (req, res) => {
       location,
       description,
       cuisine,
-      imageUrl
+      imageUrl,
+      bankDetails
     } = req.body;
 
     // Validate required fields
@@ -125,6 +127,14 @@ const registerRestaurant = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Missing required fields'
+      });
+    }
+
+    // Validate bank details
+    if (!bankDetails || !bankDetails.accountNumber || !bankDetails.ifscCode || !bankDetails.accountHolderName || !bankDetails.bankName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Bank details are required for restaurant registration'
       });
     }
 
@@ -169,6 +179,13 @@ const registerRestaurant = async (req, res) => {
       imageUrl: imageUrl || '',
       status: 'pending',
       password: hashedPassword,
+      bankDetails: encryptBankDetails({
+        accountNumber: bankDetails.accountNumber,
+        ifscCode: bankDetails.ifscCode,
+        accountHolderName: bankDetails.accountHolderName,
+        bankName: bankDetails.bankName,
+        isVerified: true
+      }),
       operatingHours: {
         monday: { open: '10:00 AM', close: '10:00 PM', isOpen: true },
         tuesday: { open: '10:00 AM', close: '10:00 PM', isOpen: true },
@@ -266,7 +283,12 @@ const getRestaurantById = async (req, res) => {
 
     res.json({
       success: true,
-      data: { restaurant }
+      data: { 
+        restaurant: {
+          ...restaurant.toObject(),
+          bankDetails: restaurant.bankDetails ? decryptBankDetails(restaurant.bankDetails) : null
+        }
+      }
     });
   } catch (error) {
     console.error('Get restaurant by ID error:', error);

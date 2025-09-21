@@ -50,7 +50,86 @@ const deliveryBoySchema = new mongoose.Schema(
     },
     resetOTPExpiry: {
       type: Date
-    }
+    },
+    // Bank Details for Payment Distribution (Required for Delivery Boy)
+    bankDetails: {
+      accountNumber: {
+        type: String,
+        trim: true,
+        required: [true, 'Bank account number is required for delivery boy']
+      },
+      ifscCode: {
+        type: String,
+        trim: true,
+        uppercase: true,
+        required: [true, 'IFSC code is required for delivery boy']
+      },
+      accountHolderName: {
+        type: String,
+        trim: true,
+        required: [true, 'Account holder name is required for delivery boy']
+      },
+      bankName: {
+        type: String,
+        trim: true,
+        required: [true, 'Bank name is required for delivery boy']
+      },
+      isVerified: {
+        type: Boolean,
+        default: false
+      }
+    },
+    // Balance Tracking for Delivery Boy
+    balance: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    totalEarnings: {
+      type: Number,
+      default: 0
+    },
+    pendingAmount: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    totalOrders: {
+      type: Number,
+      default: 0
+    },
+    lastPayout: {
+      type: Date,
+      default: null
+    },
+    nextPayoutDate: {
+      type: Date,
+      default: null
+    },
+    recentTransactions: [{
+      date: {
+        type: Date,
+        default: Date.now
+      },
+      type: {
+        type: String,
+        enum: ['delivery_fee', 'bonus', 'payout', 'adjustment'],
+        default: 'delivery_fee'
+      },
+      amount: {
+        type: Number,
+        required: true
+      },
+      status: {
+        type: String,
+        enum: ['pending', 'completed', 'failed'],
+        default: 'pending'
+      },
+      description: {
+        type: String,
+        default: ''
+      }
+    }]
 
   },
   { timestamps: true }

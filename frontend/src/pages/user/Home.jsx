@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import { MdDeliveryDining, MdDiscount, MdAccessTime, MdRestaurantMenu, MdHome, MdStar, MdTimer, MdLocalFireDepartment, MdTrendingUp } from "react-icons/md";
 import { menuAPI, cartAPI } from "../../services/api";
 import toast from 'react-hot-toast';
-import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { useUserAuth } from "../../context/UserAuthContext";
 import { useAdminAuth } from "../../context/AdminAuthContext";
 import { useRestaurantAuth } from "../../context/RestaurantAuthContext";
@@ -194,44 +193,8 @@ const Home = () => {
     addToCart(itemId);
   };
 
-  const removeFromCart = async (itemId) => {
-    try {
-      const currentQuantity = cartItems[itemId] || 0;
-      const newQuantity = currentQuantity - 1;
-      if (newQuantity <= 0) {
-        await cartAPI.removeFromCart(itemId);
-        setCartItems(prev => {
-          const next = { ...prev };
-          delete next[itemId];
-          return next;
-        });
-        window.dispatchEvent(new Event('cartUpdated'));
-        toast('Removed from cart', { style: { background: '#ca8a04', color: '#fff' } });
-      } else {
-        await cartAPI.updateItemQuantity(itemId, newQuantity);
-        setCartItems(prev => ({ ...prev, [itemId]: newQuantity }));
-        window.dispatchEvent(new Event('cartUpdated'));
-        toast('Updated quantity', { style: { background: '#ca8a04', color: '#fff' } });
-      }
-    } catch (e) {
-      console.error('Failed to update cart', e);
-    }
-  };
 
-  const getCartQuantity = (itemId) => cartItems[itemId] || 0;
 
-  const getTotalCartItems = () => Object.values(cartItems).reduce((sum, qty) => sum + qty, 0);
-
-  const getTotalCartPrice = () => {
-    const allItems = [...trending, ...specials];
-    return allItems.reduce((total, item) => {
-      const quantity = cartItems[item.id] || 0;
-      const price = item.discountPercentage > 0 
-        ? item.price * (1 - item.discountPercentage / 100)
-        : item.price;
-      return total + (price * quantity);
-    }, 0);
-  };
 
   return (
     <div className="backcolor min-h-screen">
@@ -275,16 +238,6 @@ const Home = () => {
                     <small className="text-gray-500 text-xs md:text-sm">{highlights[highlightIndex].subtitle}</small>
                   </div>
                 </div>
-              </div>
-              
-              {/* Right side - Lottie Animation - Hidden on mobile */}
-              <div className="hidden lg:flex items-center justify-center">
-                <DotLottieReact
-                  src="/delivery.lottie"
-                  loop
-                  autoplay
-                  style={{ width: '100%', height: '500px' }}
-                />
               </div>
             </div>
           </div>

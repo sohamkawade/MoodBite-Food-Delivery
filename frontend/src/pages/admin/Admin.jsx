@@ -2,22 +2,22 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAdminAuth } from "../../context/AdminAuthContext";
 import { adminAPI } from "../../services/api";
-import { 
-  MdDashboard, 
-  MdRestaurant, 
-  MdMenuBook, 
-  MdShoppingCart, 
-  MdPeople, 
-  MdAnalytics, 
-  MdLogout, 
-  MdMenu, 
-  MdClose, 
-  MdPerson, 
-  MdEdit, 
-  MdSave, 
+import toast from 'react-hot-toast';
+import {
+  MdDashboard,
+  MdRestaurant,
+  MdMenuBook,
+  MdShoppingCart,
+  MdPeople,
+  MdLogout,
+  MdMenu,
+  MdClose,
+  MdPerson,
+  MdEdit,
+  MdSave,
   MdLocalShipping,
-  MdCancel, 
-  MdVisibility, 
+  MdCancel,
+  MdVisibility,
   MdVisibilityOff,
   MdEmail,
   MdPhone,
@@ -26,7 +26,10 @@ import {
   MdBadge,
   MdVerifiedUser,
   MdSettings,
-  MdMenu as MdHamburger
+  MdMenu as MdHamburger,
+  MdAccountBalance,
+  MdRefresh,
+  MdTrendingUp,
 } from "react-icons/md";
 import { GiKnifeFork } from "react-icons/gi";
 import Dashboard from "./Dashboard";
@@ -34,20 +37,23 @@ import Restaurants from "./Restaurants";
 import Menu from "./Menu";
 import Orders from "./Orders";
 import Users from "./Users";
-import Analytics from "./Analytics";
 import DeliveryBoys from "./DeliveryBoys";
 
 const Admin = () => {
-  const [activeTab, setActiveTab] = useState("profile"); 
+  const [activeTab, setActiveTab] = useState("profile");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [touchStartX, setTouchStartX] = useState(null);
   const [touchEndX, setTouchEndX] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAdminLoggedIn, adminUser, logout, isLoading: authLoading } = useAdminAuth();
-  
-  
+  const {
+    isAdminLoggedIn,
+    adminUser,
+    logout,
+    isLoading: authLoading,
+  } = useAdminAuth();
+
   const [profileData, setProfileData] = useState({
     firstName: "",
     lastName: "",
@@ -56,23 +62,36 @@ const Admin = () => {
     role: "",
     status: "",
     lastLogin: "",
-    createdAt: ""
+    createdAt: "",
   });
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState({ type: "", text: "" });
-  
+
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
-    confirmPassword: ""
+    confirmPassword: "",
   });
   const [showPasswords, setShowPasswords] = useState({
     current: false,
     new: false,
-    confirm: false
+    confirm: false,
   });
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  // Bank Details State
+  const [bankDetails, setBankDetails] = useState({
+    accountNumber: "",
+    ifscCode: "",
+    accountHolderName: "",
+    bankName: "",
+    isVerified: false,
+  });
+  const [isEditingBankDetails, setIsEditingBankDetails] = useState(false);
+  const [isUpdatingBankDetails, setIsUpdatingBankDetails] = useState(false);
+  const [bankDetailsStep, setBankDetailsStep] = useState(1); // 1: Enter details, 2: Review & confirm
+  const [isFetchingBankDetails, setIsFetchingBankDetails] = useState(false);
+
 
   useEffect(() => {
     if (isAdminLoggedIn && activeTab === "profile") {
@@ -82,9 +101,9 @@ const Admin = () => {
 
   // Sync active tab with query param (tab)
   useEffect(() => {
-    if (location.pathname === '/admin') {
+    if (location.pathname === "/admin") {
       const params = new URLSearchParams(location.search);
-      const tab = params.get('tab');
+      const tab = params.get("tab");
       if (tab && tab !== activeTab) {
         setActiveTab(tab);
       }
@@ -126,17 +145,46 @@ const Admin = () => {
           phone: admin.phone || "",
           role: admin.role || "",
           status: admin.status || "",
-          lastLogin: admin.lastLogin ? new Date(admin.lastLogin).toLocaleString() : "",
-          createdAt: admin.createdAt ? new Date(admin.createdAt).toLocaleDateString() : ""
+          lastLogin: admin.lastLogin
+            ? new Date(admin.lastLogin).toLocaleString()
+            : "",
+          createdAt: admin.createdAt
+            ? (() => {
+                const date = new Date(admin.createdAt);
+                return isNaN(date.getTime()) 
+                  ? "N/A" 
+                  : date.toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    });
+              })()
+            : "",
         });
+
+        // Load bank details
+        if (admin.bankDetails && admin.bankDetails.accountNumber) {
+          setBankDetails({
+            accountNumber: admin.bankDetails.accountNumber || "",
+            ifscCode: admin.bankDetails.ifscCode || "",
+            accountHolderName: admin.bankDetails.accountHolderName || "",
+            bankName: admin.bankDetails.bankName || "",
+            isVerified: admin.bankDetails.isVerified || false,
+          });
+          setBankDetailsStep(2); // Set to review step if details exist
+        } else {
+          // No bank details found - user needs to add manually
+          toast.info("No bank details found. Please add your bank details.");
+        }
       }
     } catch (error) {
       console.error("Error loading profile data:", error);
-      setMessage({ type: "error", text: "Failed to load profile data" });
+      toast.error("Failed to load profile data");
     } finally {
       setIsLoading(false);
     }
   };
+
 
   const handleProfileUpdate = async () => {
     try {
@@ -144,24 +192,18 @@ const Admin = () => {
       const updateData = {
         firstName: profileData.firstName,
         lastName: profileData.lastName,
-        phone: profileData.phone
+        phone: profileData.phone,
       };
-      
+
       const response = await adminAPI.updateProfile(updateData);
       if (response.success) {
-        setMessage({ type: "success", text: "Profile updated successfully!" });
+        toast.success("Profile updated successfully!");
         setIsEditing(false);
-        // Clear message after 3 seconds
-        setTimeout(() => setMessage({ type: "", text: "" }), 3000);
       } else {
-        setMessage({ type: "error", text: response.message || "Failed to update profile" });
-        // Clear error message after 5 seconds
-        setTimeout(() => setMessage({ type: "", text: "" }), 5000);
+        toast.error(response.message || "Failed to update profile");
       }
     } catch (error) {
-      setMessage({ type: "error", text: error.message || "Failed to update profile" });
-      // Clear error message after 5 seconds
-      setTimeout(() => setMessage({ type: "", text: "" }), 5000);
+      toast.error(error.message || "Failed to update profile");
     } finally {
       setIsLoading(false);
     }
@@ -169,7 +211,7 @@ const Admin = () => {
 
   const handlePasswordChange = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setMessage({ type: "error", text: "New passwords do not match" });
+      toast.error("New passwords do not match");
       return;
     }
 
@@ -177,24 +219,188 @@ const Admin = () => {
       setIsChangingPassword(true);
       const response = await adminAPI.changePassword({
         currentPassword: passwordData.currentPassword,
-        newPassword: passwordData.newPassword
+        newPassword: passwordData.newPassword,
       });
-      
+
       if (response.success) {
-        setMessage({ type: "success", text: "Password changed successfully!" });
-        setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
-        setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+        toast.success("Password changed successfully!");
+        setPasswordData({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        });
       } else {
-        setMessage({ type: "error", text: response.message || "Failed to change password" });
-        setTimeout(() => setMessage({ type: "", text: "" }), 5000);
+        toast.error(response.message || "Failed to change password");
       }
     } catch (error) {
-      setMessage({ type: "error", text: error.message || "Failed to change password" });
-      setTimeout(() => setMessage({ type: "", text: "" }), 5000);
+      toast.error(error.message || "Failed to change password");
     } finally {
       setIsChangingPassword(false);
     }
   };
+
+  const validateField = (field, value) => {
+    switch (field) {
+      case "accountNumber":
+        if (!value) return { type: "error", message: "Required" };
+        if (!/^\d{9,18}$/.test(value))
+          return { type: "error", message: "9-18 digits" };
+        return { type: "success", message: "Valid" };
+      case "ifscCode":
+        if (!value) return { type: "error", message: "Required" };
+        if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(value))
+          return { type: "error", message: "Invalid format" };
+        return { type: "success", message: "Valid" };
+      case "accountHolderName":
+        if (!value) return { type: "error", message: "Required" };
+        if (value === 'Please enter account holder name manually') return { type: "error", message: "Please enter name" };
+        if (value.length < 2) return { type: "error", message: "Too short" };
+        return { type: "success", message: "Valid" };
+      default:
+        return { type: "", message: "" };
+    }
+  };
+
+  const handleBankDetailsUpdate = async (bankDetailsToUpdate = null) => {
+    try {
+
+      setIsUpdatingBankDetails(true);
+      const detailsToUpdate = bankDetailsToUpdate || bankDetails;
+
+      // Quick validation check
+      const accountNumberValidation = validateField(
+        "accountNumber",
+        detailsToUpdate.accountNumber
+      );
+      const ifscValidation = validateField(
+        "ifscCode",
+        detailsToUpdate.ifscCode
+      );
+      const accountHolderValidation = validateField(
+        "accountHolderName",
+        detailsToUpdate.accountHolderName
+      );
+
+      if (
+        accountNumberValidation.type === "error" ||
+        ifscValidation.type === "error" ||
+        accountHolderValidation.type === "error"
+      ) {
+        return; // Don't show any message, let individual field errors show
+      }
+
+      const response = await adminAPI.updateBankDetails(detailsToUpdate);
+
+      if (response.success) {
+
+        setIsEditingBankDetails(false);
+        loadProfileData();
+      } else {
+        toast.error(response.message || "Failed to update bank details");
+      }
+    } catch (error) {
+      toast.error(error.message || "Failed to update bank details");
+    } finally {
+      setIsUpdatingBankDetails(false);
+    }
+  };
+
+  const handleDeleteBankDetails = async () => {
+    if (
+      window.confirm(
+        "Are you sure you want to delete your bank details? This action cannot be undone."
+      )
+    ) {
+      try {
+        setIsUpdatingBankDetails(true);
+        const response = await adminAPI.deleteBankDetails();
+
+        if (response.success) {
+          setBankDetails({
+            accountNumber: "",
+            ifscCode: "",
+            accountHolderName: "",
+            bankName: "",
+            isVerified: false,
+          });
+          setBankDetailsStep(1);
+          toast.success("Bank details deleted successfully");
+        } else {
+          toast.error(response.message || "Failed to delete bank details");
+        }
+      } catch (error) {
+        toast.error(error.message || "Failed to delete bank details");
+      } finally {
+        setIsUpdatingBankDetails(false);
+      }
+    }
+  };
+
+  // Auto-fetch bank details after validation
+  const fetchBankDetailsFromIFSC = async (ifscCode, accountNumber) => {
+    if (!ifscCode || !accountNumber) return;
+
+    try {
+      setIsFetchingBankDetails(true);
+
+      // Call real bank API for verification
+      const bankDetails = await fetchRealBankDetails(ifscCode, accountNumber);
+
+      if (bankDetails) {
+        setBankDetails((prev) => ({
+          ...prev,
+          bankName: bankDetails.bankName,
+          accountHolderName: bankDetails.accountHolderName,
+        }));
+        // Don't show success message, just update the fields silently
+      } else {
+        toast.error("The provided account number and IFSC code combination could not be verified. Please verify your bank details and try again.");
+      }
+    } catch (error) {
+      console.error('Error fetching bank details:', error);
+      toast.error("Unable to verify bank account details. Please check your account number and IFSC code, then try again.");
+    } finally {
+      setIsFetchingBankDetails(false);
+    }
+  };
+
+  // Real bank API function using our backend API
+  const fetchRealBankDetails = async (ifscCode, accountNumber) => {
+    try {
+      // Using our backend API which calls Razorpay
+      const response = await adminAPI.validateBankAccount(accountNumber, ifscCode);
+      
+      if (response.success) {
+        return response.data;
+      } else {
+        throw new Error(response.message || 'Bank verification failed');
+      }
+    } catch (error) {
+      console.error('Bank API Error:', error);
+      // Fallback to IFSC lookup API
+      return await fetchBankDetailsFromIFSCAPI(ifscCode);
+    }
+  };
+
+  // Fallback IFSC lookup API
+  const fetchBankDetailsFromIFSCAPI = async (ifscCode) => {
+    try {
+      const response = await fetch(`https://ifsc.razorpay.com/${ifscCode}`);
+      if (response.ok) {
+        const data = await response.json();
+        return {
+          bankName: data.BANK || 'Bank Name Not Available',
+          accountHolderName: 'Please enter account holder name manually', // This needs account verification
+          isValid: true
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error('IFSC API Error:', error);
+      return null;
+    }
+  };
+
 
   const handleLogout = () => {
     logout();
@@ -211,20 +417,31 @@ const Admin = () => {
               <MdPerson size={28} className="text-white md:w-12 md:h-12" />
             </div>
             <div className="min-w-0 flex-1">
-              <h1 className="text-lg md:text-3xl font-bold text-gray-900 truncate">{profileData.firstName} {profileData.lastName}</h1>
-              <p className="text-orange-500 text-sm md:text-lg font-medium">{profileData.role}</p>
+              <h1 className="text-lg md:text-3xl font-bold text-gray-900 truncate">
+                {profileData.firstName} {profileData.lastName}
+              </h1>
+              <p className="text-orange-500 text-sm md:text-lg font-medium">
+                {profileData.role}
+              </p>
               <div className="flex flex-wrap items-center gap-1 md:gap-2 mt-1 md:mt-2">
                 <div className="flex items-center space-x-1 md:space-x-2 bg-green-50 px-2 md:px-3 py-1 rounded-lg border border-green-200">
-                  <MdVerifiedUser size={14} className="text-green-600 md:w-4 md:h-4"/>
-                  <span className="text-green-700 font-medium text-xs md:text-sm">{profileData.status}</span>
+                  <MdVerifiedUser
+                    size={14}
+                    className="text-green-600 md:w-4 md:h-4"
+                  />
+                  <span className="text-green-700 font-medium text-xs md:text-sm">
+                    {profileData.status}
+                  </span>
                 </div>
                 <div className="flex items-center space-x-1 md:space-x-2 bg-blue-50 px-2 md:px-3 py-1 rounded-lg border border-blue-200">
-                  <MdCalendarToday size={12} className="text-blue-600 md:w-4 md:h-4"/>
-                  <span className="text-blue-700 text-xs md:text-sm">Member since {new Date(profileData.createdAt).toLocaleDateString('en-US', { 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
-                  })}</span>
+                  <MdCalendarToday
+                    size={12}
+                    className="text-blue-600 md:w-4 md:h-4"
+                  />
+                  <span className="text-blue-700 text-xs md:text-sm">
+                    Member since{" "}
+                    {profileData.createdAt || "N/A"}
+                  </span>
                 </div>
               </div>
             </div>
@@ -241,23 +458,6 @@ const Admin = () => {
         </div>
       </div>
 
-      {/* Message Display */}
-      {message.text && (
-        <div className={`p-4 rounded-xl border-l-4 ${
-          message.type === 'success' 
-            ? 'bg-green-50 text-green-800 border-green-500' 
-            : 'bg-red-50 text-red-800 border-red-500'
-        }`}>
-          <div className="flex items-center space-x-2">
-            {message.type === 'success' ? (
-              <MdVerifiedUser size={20} className="text-green-500" />
-            ) : (
-              <MdSettings size={20} className="text-red-500" />
-            )}
-            <span className="font-medium">{message.text}</span>
-          </div>
-        </div>
-      )}
 
       {/* Profile Information Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -267,9 +467,11 @@ const Admin = () => {
             <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
               <MdPerson size={24} className="text-blue-600" />
             </div>
-            <h2 className="text-xl font-semibold text-gray-900">Personal Information</h2>
+            <h2 className="text-xl font-semibold text-gray-900">
+              Personal Information
+            </h2>
           </div>
-          
+
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -281,13 +483,20 @@ const Admin = () => {
                   <input
                     type="text"
                     value={profileData.firstName}
-                    onChange={(e) => setProfileData({...profileData, firstName: e.target.value})}
+                    onChange={(e) =>
+                      setProfileData({
+                        ...profileData,
+                        firstName: e.target.value,
+                      })
+                    }
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
                     placeholder="Enter first name"
                   />
                 ) : (
                   <div className="px-4 py-3 bg-gray-50 rounded-xl border border-gray-200">
-                    <p className="text-gray-900 font-medium">{profileData.firstName}</p>
+                    <p className="text-gray-900 font-medium">
+                      {profileData.firstName}
+                    </p>
                   </div>
                 )}
               </div>
@@ -301,13 +510,20 @@ const Admin = () => {
                   <input
                     type="text"
                     value={profileData.lastName}
-                    onChange={(e) => setProfileData({...profileData, lastName: e.target.value})}
+                    onChange={(e) =>
+                      setProfileData({
+                        ...profileData,
+                        lastName: e.target.value,
+                      })
+                    }
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
                     placeholder="Enter last name"
                   />
                 ) : (
                   <div className="px-4 py-3 bg-gray-50 rounded-xl border border-gray-200">
-                    <p className="text-gray-900 font-medium">{profileData.lastName}</p>
+                    <p className="text-gray-900 font-medium">
+                      {profileData.lastName}
+                    </p>
                   </div>
                 )}
               </div>
@@ -332,13 +548,17 @@ const Admin = () => {
                 <input
                   type="tel"
                   value={profileData.phone}
-                  onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
+                  onChange={(e) =>
+                    setProfileData({ ...profileData, phone: e.target.value })
+                  }
                   className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300"
                   placeholder="Enter phone number"
                 />
               ) : (
                 <div className="px-4 py-3 bg-gray-50 rounded-xl border border-gray-200">
-                  <p className="text-gray-900 font-medium">{profileData.phone}</p>
+                  <p className="text-gray-900 font-medium">
+                    {profileData.phone}
+                  </p>
                 </div>
               )}
             </div>
@@ -352,7 +572,7 @@ const Admin = () => {
                   className="flex items-center space-x-2 px-3 py-1.5 text-sm md:px-4 md:py-2 md:text-base bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-sm self-start"
                 >
                   <MdSave size={16} />
-                  <span>{isLoading ? 'Saving...' : 'Save Changes'}</span>
+                  <span>{isLoading ? "Saving..." : "Save Changes"}</span>
                 </button>
                 <button
                   onClick={() => {
@@ -375,12 +595,16 @@ const Admin = () => {
             <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
               <MdSecurity size={24} className="text-green-600" />
             </div>
-            <h2 className="text-xl font-semibold text-gray-900">Account Information</h2>
+            <h2 className="text-xl font-semibold text-gray-900">
+              Account Information
+            </h2>
           </div>
-          
+
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Role</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Role
+              </label>
               <div className="inline-flex items-center px-4 py-2 rounded-xl text-sm font-medium bg-orange-100 text-orange-800 border border-orange-200">
                 <MdBadge size={16} className="mr-2" />
                 {profileData.role}
@@ -388,12 +612,16 @@ const Admin = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-              <div className={`inline-flex items-center px-4 py-2 rounded-xl text-sm font-medium border ${
-                profileData.status === 'active' 
-                  ? 'bg-green-100 text-green-800 border-green-200' 
-                  : 'bg-red-100 text-red-800 border-red-200'
-              }`}>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Status
+              </label>
+              <div
+                className={`inline-flex items-center px-4 py-2 rounded-xl text-sm font-medium border ${
+                  profileData.status === "active"
+                    ? "bg-green-100 text-green-800 border-green-200"
+                    : "bg-red-100 text-red-800 border-red-200"
+                }`}
+              >
                 <MdVerifiedUser size={16} className="mr-2" />
                 {profileData.status}
               </div>
@@ -405,7 +633,9 @@ const Admin = () => {
                 <span>Last Login</span>
               </label>
               <div className="px-4 py-3 bg-gray-50 rounded-xl border border-gray-200">
-                <p className="text-gray-900 font-medium">{profileData.lastLogin}</p>
+                <p className="text-gray-900 font-medium">
+                  {profileData.lastLogin}
+                </p>
               </div>
             </div>
 
@@ -415,11 +645,223 @@ const Admin = () => {
                 <span>Member Since</span>
               </label>
               <div className="px-4 py-3 bg-gray-50 rounded-xl border border-gray-200">
-                <p className="text-gray-900 font-medium">{profileData.createdAt}</p>
+                <p className="text-gray-900 font-medium">
+                  {profileData.createdAt}
+                </p>
               </div>
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Bank Details Section */}
+      <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+              <MdAccountBalance size={24} className="text-green-600" />
+            </div>
+            <h2 className="text-xl font-semibold text-gray-900">
+              Bank Details
+            </h2>
+          </div>
+          {!isEditingBankDetails && (
+            <div className="flex space-x-2">
+              {bankDetails.accountNumber ? (
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => setIsEditingBankDetails(true)}
+                    className="flex items-center space-x-2 px-4 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-all duration-300 font-medium shadow-sm"
+                  >
+                    <MdEdit size={16} />
+                    <span>Update Details</span>
+                  </button>
+                  <button
+                    onClick={handleDeleteBankDetails}
+                    disabled={isUpdatingBankDetails}
+                    className="flex items-center space-x-2 px-4 py-2 text-sm bg-red-500 text-white rounded-lg hover:bg-red-600 transition-all duration-300 font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <MdCancel size={16} />
+                    <span>Delete</span>
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setIsEditingBankDetails(true)}
+                  className="flex items-center space-x-2 px-4 py-2 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all duration-300 font-medium shadow-sm"
+                >
+                  <MdEdit size={16} />
+                  <span>Add Account</span>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 flex items-center space-x-2">
+                  <MdBadge size={16} className="text-green-500" />
+                  <span>Account Number *</span>
+                </label>
+                <input
+                  type="text"
+                  value={bankDetails.accountNumber}
+                  onChange={async (e) => {
+                    const newAccountNumber = e.target.value.replace(/\D/g, "");
+                    setBankDetails({
+                      ...bankDetails,
+                      accountNumber: newAccountNumber,
+                    });
+                    
+                    // Auto-fetch when both fields are complete and valid
+                    if (newAccountNumber.length >= 9 && bankDetails.ifscCode.length >= 11) {
+                      const accountValidation = validateField("accountNumber", newAccountNumber);
+                      const ifscValidation = validateField("ifscCode", bankDetails.ifscCode);
+                      
+                      if (accountValidation.type === "success" && ifscValidation.type === "success") {
+                        await fetchBankDetailsFromIFSC(bankDetails.ifscCode, newAccountNumber);
+                      }
+                    }
+                  }}
+                  disabled={!isEditingBankDetails}
+                  className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-300 ${
+                    !isEditingBankDetails
+                      ? "bg-gray-100 cursor-not-allowed"
+                      : validateField("accountNumber", bankDetails.accountNumber)
+                        .type === "error"
+                      ? "border-red-300 focus:ring-red-500"
+                      : "border-gray-300 focus:ring-green-500"
+                  }`}
+                  placeholder={"Enter account number"}
+                  maxLength={18}
+                />
+                {bankDetails.accountNumber && validateField("accountNumber", bankDetails.accountNumber).type === "error" && (
+                  <p className="text-xs mt-1 text-red-500">
+                    {validateField("accountNumber", bankDetails.accountNumber).message}
+                  </p>
+                )}
+              </div>
+
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-2 flex items-center space-x-2">
+                <MdBadge size={16} className="text-green-500" />
+                <span>IFSC Code *</span>
+              </label>
+              <input
+                type="text"
+                value={bankDetails.ifscCode}
+                onChange={async (e) => {
+                  const newIfscCode = e.target.value
+                    .toUpperCase()
+                    .replace(/[^A-Z0-9]/g, "");
+                  setBankDetails({
+                    ...bankDetails,
+                    ifscCode: newIfscCode,
+                  });
+                  
+                  // Auto-fetch when both fields are complete and valid
+                  if (newIfscCode.length >= 11 && bankDetails.accountNumber.length >= 9) {
+                    const accountValidation = validateField("accountNumber", bankDetails.accountNumber);
+                    const ifscValidation = validateField("ifscCode", newIfscCode);
+                    
+                    if (accountValidation.type === "success" && ifscValidation.type === "success") {
+                      await fetchBankDetailsFromIFSC(newIfscCode, bankDetails.accountNumber);
+                    }
+                  }
+                }}
+                disabled={!isEditingBankDetails}
+                className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-300 ${
+                  !isEditingBankDetails
+                    ? "bg-gray-100 cursor-not-allowed"
+                    : validateField("ifscCode", bankDetails.ifscCode).type ===
+                      "error"
+                    ? "border-red-300 focus:ring-red-500"
+                    : "border-gray-300 focus:ring-green-500"
+                }`}
+                placeholder={"Enter IFSC code"}
+                maxLength={11}
+              />
+              {bankDetails.ifscCode && validateField("ifscCode", bankDetails.ifscCode).type === "error" && (
+                <p className="text-xs mt-1 text-red-500">
+                  {validateField("ifscCode", bankDetails.ifscCode).message}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Bank Name and Account Holder Name inputs - disabled and showing fetched values */}
+          {bankDetails.bankName && (
+            <div className="mt-6 space-y-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Bank Name
+                </label>
+                <input
+                  type="text"
+                  value={bankDetails.bankName}
+                  disabled
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl text-gray-600 bg-gray-50 cursor-not-allowed focus:outline-none"
+                  placeholder="Bank name will appear here"
+                />
+              </div>
+              
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 block">
+                  Account Holder Name *
+                </label>
+                <input
+                  type="text"
+                  value={bankDetails.accountHolderName || ""}
+                  onChange={(e) => {
+                    setBankDetails({
+                      ...bankDetails,
+                      accountHolderName: e.target.value.toUpperCase(),
+                    });
+                  }}
+                  disabled={!isEditingBankDetails}
+                  className={`w-full px-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:border-transparent transition-all duration-300 ${
+                    !isEditingBankDetails
+                      ? "bg-gray-100 cursor-not-allowed border-gray-300"
+                      : "border-gray-300 focus:ring-green-500"
+                  }`}
+                  placeholder="Enter account holder name"
+                />
+                {bankDetails.accountHolderName && bankDetails.accountHolderName.includes('manually') && (
+                  <p className="text-xs mt-1 text-orange-500">
+                    Please enter the correct account holder name
+                  </p>
+                )}
+              </div>
+              
+            </div>
+          )}
+
+        {isEditingBankDetails && (
+          <div className="flex justify-end space-x-3 mt-6">
+            <button
+              onClick={() => {
+                setIsEditingBankDetails(false);
+                setBankDetailsStep(1);
+                // Reset to original values
+                loadProfileData();
+              }}
+              className="px-4 py-2 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100 transition-all duration-300 font-medium"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                handleBankDetailsUpdate();
+              }}
+              disabled={isUpdatingBankDetails || !bankDetails.accountNumber || !bankDetails.ifscCode || !bankDetails.accountHolderName || bankDetails.accountHolderName === 'Please enter account holder name manually'}
+              className="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed font-medium flex items-center space-x-2 text-sm shadow-sm"
+            >
+              <MdSave size={16} />
+              <span>{isUpdatingBankDetails ? 'Saving...' : 'Save Details'}</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Change Password Section */}
@@ -428,66 +870,116 @@ const Admin = () => {
           <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
             <MdSecurity size={24} className="text-purple-600" />
           </div>
-          <h2 className="text-xl font-semibold text-gray-900">Change Password</h2>
+          <h2 className="text-xl font-semibold text-gray-900">
+            Change Password
+          </h2>
         </div>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Current Password</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Current Password
+            </label>
             <div className="relative">
               <input
                 type={showPasswords.current ? "text" : "password"}
                 value={passwordData.currentPassword}
-                onChange={(e) => setPasswordData({...passwordData, currentPassword: e.target.value})}
+                onChange={(e) =>
+                  setPasswordData({
+                    ...passwordData,
+                    currentPassword: e.target.value,
+                  })
+                }
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 pr-12"
                 placeholder="Enter current password"
               />
               <button
                 type="button"
-                onClick={() => setShowPasswords({...showPasswords, current: !showPasswords.current})}
+                onClick={() =>
+                  setShowPasswords({
+                    ...showPasswords,
+                    current: !showPasswords.current,
+                  })
+                }
                 className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-500 hover:text-gray-700 transition-colors"
               >
-                {showPasswords.current ? <MdVisibilityOff size={20} /> : <MdVisibility size={20} />}
+                {showPasswords.current ? (
+                  <MdVisibilityOff size={20} />
+                ) : (
+                  <MdVisibility size={20} />
+                )}
               </button>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              New Password
+            </label>
             <div className="relative">
               <input
                 type={showPasswords.new ? "text" : "password"}
                 value={passwordData.newPassword}
-                onChange={(e) => setPasswordData({...passwordData, newPassword: e.target.value})}
+                onChange={(e) =>
+                  setPasswordData({
+                    ...passwordData,
+                    newPassword: e.target.value,
+                  })
+                }
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 pr-12"
                 placeholder="Enter new password"
               />
               <button
                 type="button"
-                onClick={() => setShowPasswords({...showPasswords, new: !showPasswords.new})}
+                onClick={() =>
+                  setShowPasswords({
+                    ...showPasswords,
+                    new: !showPasswords.new,
+                  })
+                }
                 className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-500 hover:text-gray-700 transition-colors"
               >
-                {showPasswords.new ? <MdVisibilityOff size={20} /> : <MdVisibility size={20} />}
+                {showPasswords.new ? (
+                  <MdVisibilityOff size={20} />
+                ) : (
+                  <MdVisibility size={20} />
+                )}
               </button>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Confirm Password</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Confirm Password
+            </label>
             <div className="relative">
               <input
                 type={showPasswords.confirm ? "text" : "password"}
                 value={passwordData.confirmPassword}
-                onChange={(e) => setPasswordData({...passwordData, confirmPassword: e.target.value})}
+                onChange={(e) =>
+                  setPasswordData({
+                    ...passwordData,
+                    confirmPassword: e.target.value,
+                  })
+                }
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 pr-12"
                 placeholder="Confirm new password"
               />
               <button
                 type="button"
-                onClick={() => setShowPasswords({...showPasswords, confirm: !showPasswords.confirm})}
+                onClick={() =>
+                  setShowPasswords({
+                    ...showPasswords,
+                    confirm: !showPasswords.confirm,
+                  })
+                }
                 className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-500 hover:text-gray-700 transition-colors"
               >
-                {showPasswords.confirm ? <MdVisibilityOff size={20} /> : <MdVisibility size={20} />}
+                {showPasswords.confirm ? (
+                  <MdVisibilityOff size={20} />
+                ) : (
+                  <MdVisibility size={20} />
+                )}
               </button>
             </div>
           </div>
@@ -495,11 +987,18 @@ const Admin = () => {
 
         <button
           onClick={handlePasswordChange}
-          disabled={isChangingPassword || !passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword}
+          disabled={
+            isChangingPassword ||
+            !passwordData.currentPassword ||
+            !passwordData.newPassword ||
+            !passwordData.confirmPassword
+          }
           className="px-6 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed font-medium flex items-center space-x-2 text-sm shadow-sm"
         >
           <MdSecurity size={18} />
-          <span>{isChangingPassword ? 'Changing Password...' : 'Change Password'}</span>
+          <span>
+            {isChangingPassword ? "Changing Password..." : "Change Password"}
+          </span>
         </button>
       </div>
 
@@ -530,8 +1029,6 @@ const Admin = () => {
         return <Orders />;
       case "users":
         return <Users />;
-      case "analytics":
-        return <Analytics />;
 
       case "delivery-boys":
         return <DeliveryBoys />;
@@ -543,13 +1040,19 @@ const Admin = () => {
   const menuItems = [
     { id: "profile", label: "Profile", icon: <MdPerson size={24} /> },
     { id: "dashboard", label: "Dashboard", icon: <MdDashboard size={24} /> },
-    { id: "restaurants", label: "Restaurants", icon: <MdRestaurant size={24} /> },
-    { id: "delivery-boys", label: "Delivery Partners", icon: <MdLocalShipping size={24} /> },
+    {
+      id: "restaurants",
+      label: "Restaurants",
+      icon: <MdRestaurant size={24} />,
+    },
+    {
+      id: "delivery-boys",
+      label: "Delivery Partners",
+      icon: <MdLocalShipping size={24} />,
+    },
     { id: "menu", label: "Menu", icon: <MdMenuBook size={24} /> },
     { id: "orders", label: "Orders", icon: <MdShoppingCart size={24} /> },
     { id: "users", label: "Users", icon: <MdPeople size={24} /> },
-    { id: "analytics", label: "Analytics", icon: <MdAnalytics size={24} /> },
-
   ];
 
   const handleTouchStart = (e) => {
@@ -581,7 +1084,12 @@ const Admin = () => {
   };
 
   return (
-    <div className="flex backcolor min-h-screen" onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
+    <div
+      className="flex backcolor min-h-screen"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       {!isMobileNavOpen && (
         <button
           onClick={() => setIsMobileNavOpen(true)}
@@ -593,29 +1101,49 @@ const Admin = () => {
       )}
 
       {/* Sidebar */}
-      <div className={`text-gray-800 border-r border-gray-200 flex-col ${sidebarCollapsed ? 'w-20' : 'w-64'}
+      <div
+        className={`text-gray-800 border-r border-gray-200 flex-col ${
+          sidebarCollapsed ? "w-20" : "w-64"
+        }
         fixed left-0 top-16 bottom-0 z-50 backcolor transform transition-all duration-500 ease-in-out will-change-transform md:sticky md:top-16 md:self-start md:h-[calc(100vh-4rem)] md:overflow-y-auto md:transform-none md:flex
-        ${isMobileNavOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} flex`}>
+        ${
+          isMobileNavOpen
+            ? "translate-x-0"
+            : "-translate-x-full md:translate-x-0"
+        } flex`}
+      >
         <div className="p-4 pt-10">
-          <div className={`flex items-center ${sidebarCollapsed ? 'justify-center' : 'justify-between'} mb-8`}>
+          <div
+            className={`flex items-center ${
+              sidebarCollapsed ? "justify-center" : "justify-between"
+            } mb-8`}
+          >
             <div className="flex items-center ml-5 space-x-3">
               {!sidebarCollapsed && (
                 <div className="flex items-center space-x-1">
                   <GiKnifeFork size={28} className="text-orange-500" />
                   <div className="flex items-center">
-                    <span className="text-orange-500 font-bold text-lg">Mood</span>
-                    <span className="text-gray-800 font-bold text-lg">Bite</span>
+                    <span className="text-orange-500 font-bold text-lg">
+                      Mood
+                    </span>
+                    <span className="text-gray-800 font-bold text-lg">
+                      Bite
+                    </span>
                   </div>
                 </div>
               )}
             </div>
             <div className="flex items-center mr-5">
-              <button 
+              <button
                 className={`p-2 hover:bg-orange-100 rounded-lg transition-colors text-gray-600 hover:text-orange-600 hidden md:inline-flex`}
                 onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
                 title={sidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
               >
-                {sidebarCollapsed ? <MdMenu size={25} /> : <MdClose size={20} />}
+                {sidebarCollapsed ? (
+                  <MdMenu size={25} />
+                ) : (
+                  <MdClose size={20} />
+                )}
               </button>
               {isMobileNavOpen && (
                 <button
@@ -630,26 +1158,30 @@ const Admin = () => {
             </div>
           </div>
         </div>
-        
+
         <nav className="px-4">
           <ul className="space-y-4">
             {menuItems.map((item) => (
               <li key={item.id}>
-                <button 
-                  onClick={() => { 
-                    setActiveTab(item.id); 
-                    setIsMobileNavOpen(false); 
-                    navigate({ pathname: '/admin', search: `?tab=${item.id}` });
+                <button
+                  onClick={() => {
+                    setActiveTab(item.id);
+                    setIsMobileNavOpen(false);
+                    navigate({ pathname: "/admin", search: `?tab=${item.id}` });
                   }}
                   title={sidebarCollapsed ? item.label : ""}
-                  className={`w-full flex items-center ${sidebarCollapsed ? 'justify-center' : 'space-x-3'} px-4 py-3 rounded-lg transition-colors ${
-                    activeTab === item.id 
-                      ? 'bg-orange-500 text-white' 
-                      : 'text-gray-600 hover:bg-orange-100 hover:text-orange-600'
+                  className={`w-full flex items-center ${
+                    sidebarCollapsed ? "justify-center" : "space-x-3"
+                  } px-4 py-3 rounded-lg transition-colors ${
+                    activeTab === item.id
+                      ? "bg-orange-500 text-white"
+                      : "text-gray-600 hover:bg-orange-100 hover:text-orange-600"
                   }`}
                 >
                   <span className="flex-shrink-0">{item.icon}</span>
-                  {!sidebarCollapsed && <span className="font-medium">{item.label}</span>}
+                  {!sidebarCollapsed && (
+                    <span className="font-medium">{item.label}</span>
+                  )}
                 </button>
               </li>
             ))}
@@ -659,16 +1191,21 @@ const Admin = () => {
         <div className="p-4"></div>
       </div>
 
-
       {isMobileNavOpen && (
-        <div className="fixed inset-0 top-16 z-40 bg-black/40 md:hidden" onClick={() => setIsMobileNavOpen(false)} aria-hidden="true"></div>
+        <div
+          className="fixed inset-0 top-16 z-40 bg-black/40 md:hidden"
+          onClick={() => setIsMobileNavOpen(false)}
+          aria-hidden="true"
+        ></div>
       )}
 
       {/* Main Content */}
-      <div className={`flex-1 flex flex-col overflow-hidden pt-16 md:pt-0 transition-all duration-500 ease-in-out ${isMobileNavOpen ? '' : ''}`}>
-        <div className="flex-1 overflow-auto p-4 md:p-6">
-          {renderContent()}
-        </div>
+      <div
+        className={`flex-1 flex flex-col overflow-hidden pt-16 md:pt-0 transition-all duration-500 ease-in-out ${
+          isMobileNavOpen ? "" : ""
+        }`}
+      >
+        <div className="flex-1 overflow-auto p-4 md:p-6">{renderContent()}</div>
       </div>
     </div>
   );

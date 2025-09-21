@@ -6,9 +6,15 @@ import {
   MdPhone,
   MdEmail,
   MdVisibility,
-  MdVisibilityOff
+  MdVisibilityOff,
+  MdAccountBalance
 } from "react-icons/md";
 import { restaurantAPI } from "../../services/api";
+import toast from "react-hot-toast";
+
+const API_BASE_URL = import.meta.env.PROD
+  ? "https://moodbite-food-delivery.onrender.com/api"
+  : "http://localhost:5000/api";
 
 const RestaurantRegister = () => {
   const navigate = useNavigate();
@@ -25,12 +31,24 @@ const RestaurantRegister = () => {
     zipCode: "",
     description: "",
     cuisine: "",
-    imageUrl: ""
+    imageUrl: "",
+    // Bank Details
+    bankDetails: {
+      accountNumber: "",
+      ifscCode: "",
+      accountHolderName: "",
+      bankName: ""
+    }
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isFetchingBankDetails, setIsFetchingBankDetails] = useState(false);
+  const [bankValidationErrors, setBankValidationErrors] = useState({
+    accountNumber: "",
+    ifscCode: ""
+  });
 
   const cuisines = [
     "Indian", "Italian", "Chinese", "Japanese", "Mexican", "Thai", 
@@ -53,6 +71,73 @@ const RestaurantRegister = () => {
       [name]: value,
     }));
     if (error) setError("");
+  };
+
+  const validateBankField = (field, value) => {
+    switch (field) {
+      case "accountNumber":
+        if (!value) return { type: "error", message: "Required" };
+        if (!/^\d{9,18}$/.test(value))
+          return { type: "error", message: "9-18 digits" };
+        return { type: "success", message: "Valid" };
+      case "ifscCode":
+        if (!value) return { type: "error", message: "Required" };
+        if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(value))
+          return { type: "error", message: "Invalid format" };
+        return { type: "success", message: "Valid" };
+      default:
+        return { type: "", message: "" };
+    }
+  };
+
+  const fetchBankDetailsFromIFSC = async (ifscCode, accountNumber) => {
+    try {
+      setIsFetchingBankDetails(true);
+      
+      const response = await fetch(`${API_BASE_URL}/balance/validate-bank-public`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ accountNumber, ifscCode }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        setFormData(prev => ({
+          ...prev,
+          bankDetails: {
+            ...prev.bankDetails,
+            bankName: result.data.bankName || '',
+            accountHolderName: result.data.accountHolderName || 'Please enter account holder name manually'
+          }
+        }));
+        
+        // Clear validation errors
+        setBankValidationErrors({
+          accountNumber: "",
+          ifscCode: ""
+        });
+      } else {
+        // Show error message below the input
+        setBankValidationErrors({
+          accountNumber: "",
+          ifscCode: "The provided account number and IFSC code combination could not be verified. Please verify your bank details and try again."
+        });
+      }
+    } catch (error) {
+      setBankValidationErrors({
+        accountNumber: "",
+        ifscCode: "Unable to verify bank account details. Please check your account number and IFSC code, then try again."
+      });
+    } finally {
+      setIsFetchingBankDetails(false);
+    }
   };
 
   const validateForm = () => {
@@ -108,6 +193,35 @@ const RestaurantRegister = () => {
       setError("Please select a cuisine type");
       return false;
     }
+    
+    const accountNumberValidation = validateBankField("accountNumber", formData.bankDetails.accountNumber);
+    const ifscValidation = validateBankField("ifscCode", formData.bankDetails.ifscCode);
+    
+    if (accountNumberValidation.type === "error") {
+      setError(accountNumberValidation.message);
+      return false;
+    }
+    if (ifscValidation.type === "error") {
+      setError(ifscValidation.message);
+      return false;
+    }
+    if (!formData.bankDetails.accountHolderName.trim()) {
+      setError("Account holder name is required");
+      return false;
+    }
+    if (formData.bankDetails.accountHolderName === 'Please enter account holder name manually') {
+      setError("Please enter the correct account holder name");
+      return false;
+    }
+    if (!formData.bankDetails.bankName.trim()) {
+      setError("Bank name is required - please verify your account number and IFSC code");
+      return false;
+    }
+    if (formData.bankDetails.bankName === 'Bank Name Not Available' || formData.bankDetails.bankName === 'Please enter bank name manually') {
+      setError("Please verify your account number and IFSC code to get the correct bank name");
+      return false;
+    }
+    
     return true;
   };
 
@@ -135,7 +249,13 @@ const RestaurantRegister = () => {
         },
         description: formData.description,
         cuisine: formData.cuisine,
-        imageUrl: formData.imageUrl
+        imageUrl: formData.imageUrl,
+        bankDetails: {
+          accountNumber: formData.bankDetails.accountNumber,
+          ifscCode: formData.bankDetails.ifscCode.toUpperCase(),
+          accountHolderName: formData.bankDetails.accountHolderName,
+          bankName: formData.bankDetails.bankName
+        }
       };
 
       const response = await restaurantAPI.registerRestaurant(restaurantData);
@@ -432,10 +552,166 @@ const RestaurantRegister = () => {
               </div>
             </div>
 
+            {/* Bank Details */}
+            <div className="border-b border-gray-200 pb-4">
+              <h3 className="text-base font-semibold text-gray-900 mb-3 flex items-center">
+                <MdAccountBalance className="mr-2" />
+                Bank Details
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Account Number *
+                  </label>
+                  <input
+                    type="text"
+                    name="accountNumber"
+                    className={`w-full px-3 md:px-4 py-2 md:py-2 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-colors text-sm md:text-sm ${
+                      bankValidationErrors.accountNumber
+                        ? "border-red-300 focus:ring-red-500"
+                        : validateBankField("accountNumber", formData.bankDetails.accountNumber).type === "error"
+                        ? "border-red-300 focus:ring-red-500"
+                        : "border-gray-300 focus:ring-green-500"
+                    }`}
+                    value={formData.bankDetails.accountNumber}
+                    onChange={(e) => {
+                      const newAccountNumber = e.target.value.replace(/\D/g, '');
+                      setFormData(prev => ({
+                      ...prev,
+                        bankDetails: { ...prev.bankDetails, accountNumber: newAccountNumber }
+                      }));
+                      
+                      if (newAccountNumber.length >= 9 && formData.bankDetails.ifscCode.length >= 11) {
+                        const accountValidation = validateBankField("accountNumber", newAccountNumber);
+                        const ifscValidation = validateBankField("ifscCode", formData.bankDetails.ifscCode);
+                        
+                        if (accountValidation.type === "success" && ifscValidation.type === "success") {
+                          fetchBankDetailsFromIFSC(formData.bankDetails.ifscCode, newAccountNumber);
+                        }
+                      }
+                    }}
+                    placeholder="Enter account number"
+                    maxLength={18}
+                    required
+                  />
+                  {bankValidationErrors.accountNumber && (
+                    <p className="text-xs mt-1 text-red-500">
+                      {bankValidationErrors.accountNumber}
+                    </p>
+                  )}
+                  {formData.bankDetails.accountNumber && validateBankField("accountNumber", formData.bankDetails.accountNumber).type === "error" && (
+                    <p className="text-xs mt-1 text-red-500">
+                      {validateBankField("accountNumber", formData.bankDetails.accountNumber).message}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    IFSC Code *
+                  </label>
+                  <input
+                    type="text"
+                    name="ifscCode"
+                    className={`w-full px-3 md:px-4 py-2 md:py-2 border rounded-lg focus:outline-none focus:ring-2 focus:border-transparent transition-colors text-sm md:text-sm ${
+                      bankValidationErrors.ifscCode
+                        ? "border-red-300 focus:ring-red-500"
+                        : validateBankField("ifscCode", formData.bankDetails.ifscCode).type === "error"
+                        ? "border-red-300 focus:ring-red-500"
+                        : "border-gray-300 focus:ring-green-500"
+                    }`}
+                    value={formData.bankDetails.ifscCode}
+                    onChange={(e) => {
+                      const newIfscCode = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+                      setFormData(prev => ({
+                      ...prev,
+                        bankDetails: { ...prev.bankDetails, ifscCode: newIfscCode }
+                      }));
+                      
+                      if (newIfscCode.length >= 11 && formData.bankDetails.accountNumber.length >= 9) {
+                        const accountValidation = validateBankField("accountNumber", formData.bankDetails.accountNumber);
+                        const ifscValidation = validateBankField("ifscCode", newIfscCode);
+                        
+                        if (accountValidation.type === "success" && ifscValidation.type === "success") {
+                          fetchBankDetailsFromIFSC(newIfscCode, formData.bankDetails.accountNumber);
+                        }
+                      }
+                    }}
+                    placeholder="Enter IFSC code (e.g., SBIN0001234)"
+                    maxLength={11}
+                    required
+                  />
+                  {bankValidationErrors.ifscCode && (
+                    <p className="text-xs mt-1 text-red-500">
+                      {bankValidationErrors.ifscCode}
+                    </p>
+                  )}
+                  {formData.bankDetails.ifscCode && validateBankField("ifscCode", formData.bankDetails.ifscCode).type === "error" && (
+                    <p className="text-xs mt-1 text-red-500">
+                      {validateBankField("ifscCode", formData.bankDetails.ifscCode).message}
+                    </p>
+                  )}
+                </div>
+
+                {formData.bankDetails.bankName && (
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Bank Name
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.bankDetails.bankName}
+                      disabled
+                      className={`w-full px-3 md:px-4 py-2 md:py-2 border rounded-lg text-gray-600 bg-gray-50 cursor-not-allowed focus:outline-none text-sm md:text-sm ${
+                        formData.bankDetails.bankName === 'Bank Name Not Available' || formData.bankDetails.bankName === 'Please enter bank name manually'
+                          ? 'border-orange-300'
+                          : 'border-green-300'
+                      }`}
+                      placeholder="Bank name will appear here"
+                    />
+                    {formData.bankDetails.bankName === 'Bank Name Not Available' || formData.bankDetails.bankName === 'Please enter bank name manually' ? (
+                      <p className="text-xs mt-1 text-orange-500">
+                        Bank name could not be verified. Please check your account number and IFSC code.
+                      </p>
+                    ) : (
+                      <p className="text-xs mt-1 text-green-500">
+                        ✓ Bank details verified successfully
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Account Holder Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.bankDetails.accountHolderName || ""}
+                    onChange={(e) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        bankDetails: { ...prev.bankDetails, accountHolderName: e.target.value.toUpperCase() }
+                      }));
+                    }}
+                    className="w-full px-3 md:px-4 py-2 md:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-sm md:text-sm"
+                    placeholder="Enter account holder name"
+                    required
+                  />
+                  {formData.bankDetails.accountHolderName && formData.bankDetails.accountHolderName.includes('manually') && (
+                    <p className="text-xs mt-1 text-orange-500">
+                      Please enter the correct account holder name
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || isFetchingBankDetails}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed text-sm"
             >
               {isLoading ? (
@@ -461,6 +737,30 @@ const RestaurantRegister = () => {
                     ></path>
                   </svg>
                   Registering...
+                </div>
+              ) : isFetchingBankDetails ? (
+                <div className="flex items-center justify-center">
+                  <svg
+                    className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  Verifying Bank Details...
                 </div>
               ) : (
                 "Register Restaurant"

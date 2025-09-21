@@ -107,18 +107,36 @@ const getCoordinatesFromAddress = async (address) => {
 
 const register = async (req, res) => {
   try {
-    const { name, phone, email, password, vehicleNumber, licenseId, vehicleType, area, address, city, state, zipCode, restaurantId } = req.body;
+    console.log('Delivery registration request received:', req.body);
+    
+    const { name, phone, email, password, vehicleNumber, licenseId, vehicleType, area, address, city, state, zipCode, restaurantId, bankDetails } = req.body;
+    
+    console.log('Extracted data:', { name, phone, email, bankDetails });
+    
     if (!name || !phone || !password) return res.status(400).json({ success: false, message: 'Name, phone and password are required' });
     
-    const exists = await DeliveryBoy.findOne({ $or: [{ phone }, { email }] });
-    if (exists) return res.status(400).json({ success: false, message: 'Account already exists with phone/email' });
+    // Validate bank details
+    if (!bankDetails || !bankDetails.accountNumber || !bankDetails.ifscCode || !bankDetails.accountHolderName || !bankDetails.bankName) {
+      console.log('Bank details validation failed:', bankDetails);
+      return res.status(400).json({ success: false, message: 'Bank details are required for delivery boy registration' });
+    }
     
+    console.log('Checking for existing delivery boy...');
+    const exists = await DeliveryBoy.findOne({ $or: [{ phone }, { email }] });
+    if (exists) {
+      console.log('Delivery boy already exists');
+      return res.status(400).json({ success: false, message: 'Account already exists with phone/email' });
+    }
+    
+    console.log('Hashing password...');
     const salt = await bcrypt.genSalt(10);
     const hashed = await bcrypt.hash(password, salt);
     
     const fullAddress = `${address || ''}, ${area || ''}, ${city}, ${state}, ${zipCode || ''}, India`;
+    console.log('Getting coordinates for address:', fullAddress);
     
     const coordinates = await getCoordinatesFromAddress(fullAddress);
+    console.log('Coordinates received:', coordinates);
     
     const riderData = {
       name, 
@@ -133,6 +151,13 @@ const register = async (req, res) => {
       city,
       state,
       zipCode,
+      bankDetails: {
+        accountNumber: bankDetails.accountNumber,
+        ifscCode: bankDetails.ifscCode.toUpperCase(),
+        accountHolderName: bankDetails.accountHolderName,
+        bankName: bankDetails.bankName,
+        isVerified: false
+      },
       assignedRestaurant: restaurantId || null, 
       approvalStatus: 'pending', 
       status: 'offline', 
@@ -146,8 +171,10 @@ const register = async (req, res) => {
       } : {})
     };
     
+    console.log('Creating delivery boy with data:', riderData);
     const rider = new DeliveryBoy(riderData);
     await rider.save();
+    console.log('Delivery boy saved successfully:', rider._id);
     
     res.status(201).json({ 
       success: true, 
@@ -159,6 +186,8 @@ const register = async (req, res) => {
     });
   } catch (e) {
     console.error('Delivery boy registration error:', e);
+    console.error('Error details:', e.message);
+    console.error('Error stack:', e.stack);
     res.status(500).json({ success: false, message: 'Failed to register' });
   }
 };

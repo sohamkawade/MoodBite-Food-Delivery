@@ -234,6 +234,11 @@ export const userAPI = {
     });
   },
 
+  // Get transaction history
+  getTransactionHistory: async (page = 1, limit = 10, type = 'all') => {
+    return await apiRequest(`/balance/transactions?page=${page}&limit=${limit}&type=${type}`);
+  },
+
 };
 
 export const adminAPI = {
@@ -290,6 +295,76 @@ export const adminAPI = {
         'Authorization': `Bearer ${getAdminAuthToken()}`
       },
       body: JSON.stringify(passwordData),
+    });
+  },
+
+  updateBankDetails: async (bankDetails) => {
+    return await apiRequest('/balance/bank-details', {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      },
+      body: JSON.stringify(bankDetails),
+    });
+  },
+
+  deleteBankDetails: async () => {
+    return await apiRequest('/balance/bank-details', {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      },
+    });
+  },
+
+  validateBankAccount: async (accountNumber, ifscCode) => {
+    return await apiRequest('/balance/validate-bank', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      },
+      body: JSON.stringify({ accountNumber, ifscCode }),
+    });
+  },
+
+  // Razorpay integration
+  fetchFromRazorpay: async () => {
+    return await apiRequest('/balance/razorpay/fetch', {
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      }
+    });
+  },
+
+  verifyRazorpay: async () => {
+    return await apiRequest('/balance/razorpay/verify', {
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      }
+    });
+  },
+
+  getRazorpayBalance: async () => {
+    return await apiRequest('/balance/razorpay/balance', {
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      }
+    });
+  },
+
+  testRazorpayFetch: async () => {
+    return await apiRequest('/balance/razorpay/test', {
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      }
+    });
+  },
+
+  getBalance: async () => {
+    return await apiRequest('/balance', {
+      headers: {
+        'Authorization': `Bearer ${getAdminAuthToken()}`
+      }
     });
   },
 
@@ -1051,4 +1126,150 @@ export default {
   getAdminAuthToken,
   setAdminAuthToken,
   removeAdminAuthToken,
+};
+
+// Balance API
+export const balanceAPI = {
+  // Get balance for current user
+  getBalance: () => {
+    const token = getAuthToken();
+    return apiRequest('/balance', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+  },
+
+  // Get balance for restaurant
+  getRestaurantBalance: () => {
+    const token = localStorage.getItem('restaurantToken');
+    if (!token) throw new Error('No restaurant token found');
+    
+    return apiRequest('/balance', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+  },
+
+  // Update bank details
+  updateBankDetails: (bankDetails) => apiRequest('/balance/bank-details', {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${getAuthToken()}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(bankDetails),
+  }),
+
+  // Update restaurant bank details
+  updateRestaurantBankDetails: (bankDetails) => {
+    const token = localStorage.getItem('restaurantToken');
+    if (!token) throw new Error('No restaurant token found');
+    
+    return apiRequest('/balance/bank-details', {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(bankDetails),
+    });
+  },
+
+  // Delete bank details
+  deleteBankDetails: () => apiRequest('/balance/bank-details', {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${getAuthToken()}`,
+      'Content-Type': 'application/json',
+    },
+  }),
+
+  // Delete restaurant bank details
+  deleteRestaurantBankDetails: () => {
+    const token = localStorage.getItem('restaurantToken');
+    if (!token) throw new Error('No restaurant token found');
+    
+    return apiRequest('/balance/bank-details', {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+  },
+
+  // Get balance for delivery boy
+  getDeliveryBoyBalance: () => {
+    const token = localStorage.getItem('deliveryToken');
+    if (!token) throw new Error('No delivery token found');
+    
+    return apiRequest('/balance', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+  },
+
+  // Update delivery boy bank details
+  updateDeliveryBoyBankDetails: (bankDetails) => {
+    const token = localStorage.getItem('deliveryToken');
+    if (!token) throw new Error('No delivery token found');
+    
+    return apiRequest('/balance/bank-details', {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(bankDetails),
+    });
+  },
+
+  // Delete delivery boy bank details
+  deleteDeliveryBoyBankDetails: () => {
+    const token = localStorage.getItem('deliveryToken');
+    if (!token) throw new Error('No delivery token found');
+    
+    return apiRequest('/balance/bank-details', {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+  },
+
+  // Get transaction history
+  getTransactionHistory: () => apiRequest('/balance/transactions', {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${getAuthToken()}`,
+      'Content-Type': 'application/json',
+    },
+  }),
+
+  // Admin: Get all balances
+  getAllBalances: () => apiRequest('/balance/admin/all', {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${getAdminAuthToken()}`,
+      'Content-Type': 'application/json',
+    },
+  }),
+
+  // Get commission rates (public endpoint)
+  getCommissionRates: () => apiRequest('/balance/commission-rates', {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  }),
 };

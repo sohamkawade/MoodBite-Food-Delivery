@@ -178,7 +178,7 @@ export const loadRazorpayScript = () => {
 
     // Try to append to head first, fallback to body
     if (document.head) {
-      document.head.appendChild(script);
+    document.head.appendChild(script);
     } else {
       document.body.appendChild(script);
     }
@@ -241,7 +241,7 @@ const loadRazorpayAlternative = () => {
     if (document.head) {
       document.head.appendChild(script);
     } else {
-      document.body.appendChild(script);
+    document.body.appendChild(script);
     }
   });
 };
@@ -324,7 +324,7 @@ export const useRazorpayLoader = () => {
         }
       } finally {
         if (retryCount >= 3) {
-          setIsLoading(false);
+        setIsLoading(false);
         }
       }
     };

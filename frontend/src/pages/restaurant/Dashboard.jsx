@@ -289,6 +289,7 @@ const RestaurantDashboard = () => {
     }
   };
 
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -452,6 +453,7 @@ const RestaurantDashboard = () => {
           </div>
         </div>
       </div>
+
 
       {/* Quick Stats */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200">

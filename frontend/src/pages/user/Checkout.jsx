@@ -21,6 +21,7 @@ const Checkout = () => {
   const [paymentStatus, setPaymentStatus] = useState('idle'); 
   const [loading, setLoading] = useState(true);
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
 
   useEffect(() => {
@@ -49,7 +50,7 @@ const Checkout = () => {
           setAddressMode('new');
         }
       } catch (e) {
-        console.error('Failed to load checkout data', e);
+        // Handle error silently
       } finally {
         setLoading(false);
       }
@@ -64,7 +65,7 @@ const Checkout = () => {
         await loadRazorpayScript();
         setRazorpayLoaded(true);
       } catch (error) {
-        console.error('Failed to load Razorpay in Checkout:', error);
+        // Handle error silently
       }
     };
 
@@ -79,13 +80,15 @@ const Checkout = () => {
   const fieldsOk = !!(address.street && address.city && address.state);
   const coordsOk = !!(address.coordinates?.latitude && address.coordinates?.longitude);
   const paymentOk = pm === 'cash' || (pm === 'razorpay' && razorpayLoaded);
-  const canPlaceOrder = items.length > 0 && fieldsOk && coordsOk && paymentOk;
+  const canPlaceOrder = items.length > 0 && fieldsOk && coordsOk && paymentOk && !isProcessingPayment;
 
   const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
   // Razorpay payment handler
   const handleRazorpayPayment = async () => {
     try {
+      setIsProcessingPayment(true);
+      
       // Create Razorpay order
       const orderResponse = await paymentAPI.createRazorpayOrder(total, `order_${Date.now()}`);
       
@@ -104,6 +107,9 @@ const Checkout = () => {
         order_id: order_id,
         handler: async function (response) {
           try {
+            // Show loading toast
+            toast.loading('Verifying payment...', { id: 'payment-verify' });
+            
             // Verify payment
             const verifyResponse = await paymentAPI.verifyRazorpayPayment(
               response.razorpay_order_id,
@@ -112,14 +118,21 @@ const Checkout = () => {
             );
 
             if (verifyResponse.success) {
+              // Dismiss loading toast
+              toast.dismiss('payment-verify');
+              
               // Place order with payment details
               await placeOrderWithPayment('razorpay', response.razorpay_order_id, response.razorpay_payment_id, response.razorpay_signature);
+              
+              // Reset processing state
+              setIsProcessingPayment(false);
             } else {
               throw new Error('Payment verification failed');
             }
           } catch (error) {
-            console.error('Payment verification error:', error);
-            toast.error('Payment verification failed');
+            toast.dismiss('payment-verify');
+            toast.error('Payment verification failed. Please try again.');
+            setIsProcessingPayment(false);
           }
         },
         prefill: {
@@ -133,6 +146,7 @@ const Checkout = () => {
         modal: {
           ondismiss: function() {
             toast.error('Payment cancelled');
+            setIsProcessingPayment(false);
           }
         }
       };
@@ -140,8 +154,8 @@ const Checkout = () => {
       const razorpay = new window.Razorpay(options);
       razorpay.open();
     } catch (error) {
-      console.error('Razorpay payment error:', error);
       toast.error('Failed to initiate payment');
+      setIsProcessingPayment(false);
     }
   };
 
@@ -150,6 +164,9 @@ const Checkout = () => {
 
   const placeOrderWithPayment = async (paymentMethod, razorpayOrderId, razorpayPaymentId, razorpaySignature) => {
     try {
+      // Show loading toast
+      toast.loading('Placing your order...', { id: 'place-order' });
+      
       const selectedAddress = address;
       
       const payload = {
@@ -163,17 +180,28 @@ const Checkout = () => {
           razorpaySignature
         })
       };
-
+      
       const res = await ordersAPI.placeOrder(payload);
+      
       if (res.success) {
-        toast.success('Order placed successfully!');
-        window.location.href = '/orders';
+        // Dismiss loading toast
+        toast.dismiss('place-order');
+        
+        // Show success message
+        toast.success('Order placed successfully! Redirecting to orders...', {
+          duration: 3000
+        });
+        
+        // Redirect after a short delay
+        setTimeout(() => {
+          window.location.href = '/orders';
+        }, 1500);
       } else {
         throw new Error(res.message || 'Failed to place order');
       }
     } catch (error) {
-      console.error('Place order failed:', error);
-      toast.error('Failed to place order');
+      toast.dismiss('place-order');
+      toast.error(`Failed to place order: ${error.message || 'Please try again'}`);
     }
   };
 
@@ -200,7 +228,6 @@ const Checkout = () => {
         await handleRazorpayPayment();
       }
     } catch (e) {
-      console.error('Place order failed', e);
       toast.error('Failed to place order');
     }
   };
@@ -299,16 +326,30 @@ const Checkout = () => {
                 )}
                 
                 {pm === 'razorpay' && (
-                  <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-center gap-2 text-blue-800 text-sm">
-                      <MdCreditCard size={16} />
-                      <span>Secure online payment via Razorpay (Cards, UPI, Net Banking, Wallets)</span>
-                    </div>
-                    {!razorpayLoaded && (
-                      <div className="mt-2 text-xs text-orange-600">
-                        Loading payment system...
+                  <div className="mt-4 space-y-3">
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-center gap-2 text-blue-800 text-sm">
+                        <MdCreditCard size={16} />
+                        <span>Secure online payment via Razorpay (Cards, UPI, Net Banking, Wallets)</span>
                       </div>
-                    )}
+                      {!razorpayLoaded && (
+                        <div className="mt-2 text-xs text-orange-600">
+                          Loading payment system...
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <MdSecurity className="text-green-600 mt-0.5" size={16} />
+                        <div className="text-xs text-green-800">
+                          <p className="font-medium mb-1">Refund Policy:</p>
+                          <p>• Automatic refund if order cancelled or payment fails</p>
+                          <p>• Refunds processed within 2-3 business days</p>
+                          <p>• Money credited back to original payment method</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -331,7 +372,12 @@ const Checkout = () => {
                   disabled={!canPlaceOrder}
                   className={`mt-5 w-full bg-gradient-to-r from-orange-500 to-red-500 text-white py-3 md:py-3 rounded-lg font-semibold text-sm md:text-base hover:from-orange-600 hover:to-red-600 disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
-                  {pm === 'cash' ? 'Place Order (Cash on Delivery)' : 'Pay & Place Order'} · ₹{total.toFixed(2)}
+                  {isProcessingPayment 
+                    ? 'Processing Payment...' 
+                    : pm === 'cash' 
+                      ? 'Place Order (Cash on Delivery)' 
+                      : 'Pay & Place Order'
+                  } · ₹{total.toFixed(2)}
                 </button>
                 <div className="text-[10px] md:text-[11px] text-gray-500 text-center mt-1 flex items-center justify-center gap-1"><MdSecurity /> Safe & Secure Payments by MoodBite Pay</div>
                 <button onClick={async ()=>{

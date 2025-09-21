@@ -5,6 +5,8 @@ const DeliveryAssignment = require('../models/DeliveryAssignment');
 const User = require('../models/User');
 const Restaurant = require('../models/Restaurant');
 const MenuItem = require('../models/MenuItem');
+const Transaction = require('../models/Transaction');
+const { distributePayment } = require('../services/paymentDistributionService');
 
 // Compute delivery by amount (subtotal + tax)
 const computeDeliveryFee = (subtotal, tax) => {
@@ -137,6 +139,32 @@ const placeOrder = async (req, res) => {
 
     await order.save();
 
+    // Payment Distribution (only for successful payments)
+    if (computedPaymentStatus === 'completed') {
+      try {
+        const distributionResult = await distributePayment(
+          {
+            orderId: order.orderId,
+            customerId: userId,
+            restaurantId: resolvedRestaurant,
+            totalAmount: total
+          },
+          total,
+          resolvedRestaurant,
+          null // deliveryBoyId will be assigned later
+        );
+        
+        if (distributionResult.success) {
+          console.log('Payment distributed successfully:', distributionResult.distributions);
+        } else {
+          console.error('Payment distribution failed:', distributionResult.error);
+        }
+      } catch (distError) {
+        console.error('Payment distribution error:', distError);
+        // Don't fail the order if distribution fails
+      }
+    }
+
     try {
       await Restaurant.findByIdAndUpdate(resolvedRestaurant, { $inc: { totalOrders: 1 } });
       await User.findByIdAndUpdate(userId, { $inc: { totalOrders: 1, totalSpent: total } });
@@ -242,8 +270,46 @@ const adminUpdateOrder = async (req, res) => {
     if (deliveryPartnerName !== undefined) update.deliveryPartnerName = deliveryPartnerName;
     if (deliveryPartnerPhone !== undefined) update.deliveryPartnerPhone = deliveryPartnerPhone;
     if (kitchenNotes !== undefined) update.kitchenNotes = kitchenNotes;
-    const order = await Order.findByIdAndUpdate(id, update, { new: true });
+    
+    const order = await Order.findByIdAndUpdate(id, update, { new: true }).populate('customer', 'firstName lastName email');
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    
+    // Handle cancellation with refund
+    if (status === 'cancelled') {
+      await order.cancelOrder('Cancelled by admin');
+      
+      // Process refund if payment was made
+      if (order.paymentStatus === 'completed' && order.paymentMethod !== 'cash') {
+        try {
+          // Create refund transaction record
+          const refundTransaction = new Transaction({
+            user: order.customer._id,
+            order: order._id,
+            type: 'refund',
+            amount: order.total,
+            status: 'completed',
+            paymentMethod: order.paymentMethod,
+            description: `Refund for order cancelled by admin #${order.orderId}`,
+            transactionId: `REF_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            razorpayPaymentId: order.razorpayPaymentId,
+            metadata: {
+              orderId: order.orderId,
+              cancellationReason: 'Cancelled by admin',
+              refundAmount: order.total
+            }
+          });
+          
+          await refundTransaction.save();
+          
+          console.log(`Refund transaction created for admin-cancelled order ${order.orderId}: ₹${order.total}`);
+          
+        } catch (refundError) {
+          console.error('Error creating refund transaction:', refundError);
+          // Don't fail the cancellation if refund record creation fails
+        }
+      }
+    }
+    
     // Optional: assign delivery boy inline
     if (deliveryBoyId) {
       const rider = await DeliveryBoy.findById(deliveryBoyId);
@@ -258,7 +324,12 @@ const adminUpdateOrder = async (req, res) => {
       rider.status = 'busy';
       await rider.save();
     }
-    res.json({ success: true, message: 'Order updated', data: order });
+    
+    const message = status === 'cancelled' && order.paymentStatus === 'completed' && order.paymentMethod !== 'cash'
+      ? 'Order cancelled and refund will be processed within 2-3 business days'
+      : 'Order updated';
+      
+    res.json({ success: true, message, data: order });
   } catch (error) {
     console.error('Admin update order error:', error);
     res.status(500).json({ success: false, message: 'Failed to update order' });
@@ -270,7 +341,8 @@ const cancelMyOrder = async (req, res) => {
   try {
     const userId = req.user._id;
     const { id } = req.params;
-    const order = await Order.findById(id);
+    const order = await Order.findById(id).populate('customer', 'firstName lastName email');
+    
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
     if (order.customer.toString() !== userId.toString()) {
       return res.status(403).json({ success: false, message: 'Not authorized' });
@@ -278,8 +350,51 @@ const cancelMyOrder = async (req, res) => {
     if (!order.canBeCancelled) {
       return res.status(400).json({ success: false, message: 'Order cannot be cancelled at this stage' });
     }
+    
+    // Cancel the order
     await order.cancelOrder('Cancelled by customer');
-    res.json({ success: true, message: 'Order cancelled', data: order });
+    
+    // Process refund if payment was made
+    if (order.paymentStatus === 'completed' && order.paymentMethod !== 'cash') {
+      try {
+        // Create refund transaction record
+        const refundTransaction = new Transaction({
+          user: userId,
+          order: order._id,
+          type: 'refund',
+          amount: order.total,
+          status: 'completed',
+          paymentMethod: order.paymentMethod,
+          description: `Refund for cancelled order #${order.orderId}`,
+          transactionId: `REF_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          razorpayPaymentId: order.razorpayPaymentId,
+          metadata: {
+            orderId: order.orderId,
+            cancellationReason: 'Cancelled by customer',
+            refundAmount: order.total
+          }
+        });
+        
+        await refundTransaction.save();
+        
+        console.log(`Refund transaction created for order ${order.orderId}: ₹${order.total}`);
+        
+        // Note: In production, you would integrate with Razorpay refund API here
+        // For now, we're just creating the transaction record
+        
+      } catch (refundError) {
+        console.error('Error creating refund transaction:', refundError);
+        // Don't fail the cancellation if refund record creation fails
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      message: order.paymentStatus === 'completed' && order.paymentMethod !== 'cash' 
+        ? 'Order cancelled and refund will be processed within 2-3 business days' 
+        : 'Order cancelled successfully', 
+      data: order 
+    });
   } catch (error) {
     console.error('Cancel order error:', error);
     res.status(500).json({ success: false, message: 'Failed to cancel order' });
@@ -341,6 +456,33 @@ const adminAutoAssignDeliveryBoy = async (req, res) => {
     chosen.status = 'busy';
     await chosen.save();
 
+    // Update payment distribution with delivery boy
+    if (order.paymentStatus === 'completed') {
+      try {
+        const { distributePayment } = require('../services/paymentDistributionService');
+        const distributionResult = await distributePayment(
+          {
+            orderId: order.orderId,
+            customerId: order.customer,
+            restaurantId: restaurantId,
+            totalAmount: order.total
+          },
+          order.total,
+          restaurantId,
+          chosen._id // Now we have delivery boy ID
+        );
+        
+        if (distributionResult.success) {
+          console.log('Payment distribution updated with delivery boy:', distributionResult.distributions);
+        } else {
+          console.error('Payment distribution update failed:', distributionResult.error);
+        }
+      } catch (distError) {
+        console.error('Payment distribution update error:', distError);
+        // Don't fail the assignment if distribution update fails
+      }
+    }
+
     res.json({ success: true, message: 'Auto-assigned delivery boy', data: { orderId: order._id, deliveryBoy: { _id: chosen._id, name: chosen.name, phone: chosen.phone, vehicleNumber: chosen.vehicleNumber || '', area: chosen.area || '' } } });
   } catch (error) {
     console.error('Admin auto-assign error:', error);
@@ -371,8 +513,55 @@ const restaurantUpdateOrderStatus = async (req, res) => {
     const { status } = req.body || {};
     const allowed = ['pending', 'preparing', 'ready_for_pickup', 'cancelled'];
     if (!allowed.includes(status)) return res.status(400).json({ success: false, message: 'Invalid status' });
-    const order = await Order.findOne({ _id: id, restaurant: restaurantId });
+    
+    const order = await Order.findOne({ _id: id, restaurant: restaurantId }).populate('customer', 'firstName lastName email');
     if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    
+    // Handle cancellation with refund
+    if (status === 'cancelled') {
+      await order.cancelOrder('Cancelled by restaurant');
+      
+      // Process refund if payment was made
+      if (order.paymentStatus === 'completed' && order.paymentMethod !== 'cash') {
+        try {
+          // Create refund transaction record
+          const refundTransaction = new Transaction({
+            user: order.customer._id,
+            order: order._id,
+            type: 'refund',
+            amount: order.total,
+            status: 'completed',
+            paymentMethod: order.paymentMethod,
+            description: `Refund for order cancelled by restaurant #${order.orderId}`,
+            transactionId: `REF_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            razorpayPaymentId: order.razorpayPaymentId,
+            metadata: {
+              orderId: order.orderId,
+              cancellationReason: 'Cancelled by restaurant',
+              refundAmount: order.total
+            }
+          });
+          
+          await refundTransaction.save();
+          
+          console.log(`Refund transaction created for restaurant-cancelled order ${order.orderId}: ₹${order.total}`);
+          
+        } catch (refundError) {
+          console.error('Error creating refund transaction:', refundError);
+          // Don't fail the cancellation if refund record creation fails
+        }
+      }
+      
+      return res.json({ 
+        success: true, 
+        message: order.paymentStatus === 'completed' && order.paymentMethod !== 'cash' 
+          ? 'Order cancelled and refund will be processed within 2-3 business days' 
+          : 'Order cancelled successfully', 
+        data: order 
+      });
+    }
+    
+    // For other status updates
     order.status = status;
     await order.save();
     res.json({ success: true, message: 'Order status updated', data: order });

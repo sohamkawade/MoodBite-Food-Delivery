@@ -3,6 +3,7 @@ const Restaurant = require('../models/Restaurant');
 const { generateToken } = require('../utils/generateToken');
 const MenuItem = require('../models/MenuItem');
 const { sendPasswordResetOTPEmail, generateOTP } = require('../utils/emailService');
+const { decryptBankDetails } = require('../utils/encryption');
 
 const login = async (req, res) => {
   try {
@@ -131,7 +132,12 @@ const getProfile = async (req, res) => {
 
     res.json({
       success: true,
-      data: { restaurant }
+      data: { 
+        restaurant: {
+          ...restaurant.toObject(),
+          bankDetails: restaurant.bankDetails ? decryptBankDetails(restaurant.bankDetails) : null
+        }
+      }
     });
 
   } catch (error) {

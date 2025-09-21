@@ -98,6 +98,40 @@ const adminSchema = new mongoose.Schema({
   },
   resetOTPExpiry: {
     type: Date
+  },
+  // Bank Details for Platform/Admin (Optional - can be filled manually)
+  bankDetails: {
+    accountNumber: {
+      type: String,
+      trim: true
+    },
+    ifscCode: {
+      type: String,
+      trim: true,
+      uppercase: true
+    },
+    accountHolderName: {
+      type: String,
+      trim: true
+    },
+    bankName: {
+      type: String,
+      trim: true
+    },
+    isVerified: {
+      type: Boolean,
+      default: false
+    }
+  },
+  // Balance Tracking for Platform/Admin
+  balance: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  totalEarnings: {
+    type: Number,
+    default: 0
   }
 
 }, {

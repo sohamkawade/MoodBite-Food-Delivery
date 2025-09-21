@@ -10,7 +10,8 @@ import {
   MdLogout, 
   MdMenu, 
   MdClose,
-  MdStar
+  MdStar,
+  MdAccountBalance
 } from "react-icons/md";
 import { GiKnifeFork } from "react-icons/gi";
 import Dashboard from "./Dashboard";
@@ -18,6 +19,7 @@ import MenuManagement from "./MenuManagement";
 import Orders from "./Orders";
 import Profile from "./Profile";
 import Ratings from "./Ratings";
+import BankDetails from "./BankDetails";
 import Navbar from "../../components/Navbar";
 
 const RestaurantLayout = () => {
@@ -35,6 +37,7 @@ const RestaurantLayout = () => {
     else if (path.includes('/orders')) setActiveTab('orders');
     else if (path.includes('/profile')) setActiveTab('profile');
     else if (path.includes('/ratings')) setActiveTab('ratings');
+    else if (path.includes('/bank-details')) setActiveTab('bank-details');
     else setActiveTab('dashboard');
   }, [location]);
 
@@ -57,6 +60,7 @@ const RestaurantLayout = () => {
       <Route path="orders" element={<Orders />} />
       <Route path="profile" element={<Profile />} />
       <Route path="ratings" element={<Ratings />} />
+      <Route path="bank-details" element={<BankDetails />} />
       <Route path="*" element={<Navigate to="/restaurant/dashboard" replace />} />
     </Routes>
   );
@@ -67,6 +71,7 @@ const RestaurantLayout = () => {
     { id: "menu", label: "Menu Management", icon: <MdMenuBook size={24} />, path: "/restaurant/menu" },
     { id: "orders", label: "Orders", icon: <MdShoppingCart size={24} />, path: "/restaurant/orders" },
     { id: "ratings", label: "Ratings", icon: <MdStar size={24} />, path: "/restaurant/ratings" },
+    { id: "bank-details", label: "Bank Details", icon: <MdAccountBalance size={24} />, path: "/restaurant/bank-details" },
   ];
 
   // Show loading while restoring session

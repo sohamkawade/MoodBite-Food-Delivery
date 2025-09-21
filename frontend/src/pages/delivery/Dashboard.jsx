@@ -271,8 +271,8 @@ const DeliveryDashboard = () => {
     setCurrentOrder(null);
     setOtpInput("");
     setOtpError("");
-    setOtpMessage("");
   };
+
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -440,6 +440,7 @@ const DeliveryDashboard = () => {
           </div>
         </div>
       </div>
+
 
       {/* Active Orders */}
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
@@ -681,6 +682,7 @@ const DeliveryDashboard = () => {
           </div>
         </div>
       )}
+
     </div>
   );
 };

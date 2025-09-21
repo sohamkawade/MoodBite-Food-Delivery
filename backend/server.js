@@ -19,11 +19,11 @@ const categoryRoutes = require('./routes/categoryRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const cartRoutes = require('./routes/cartRoutes');
 const deliveryBoyRoutes = require('./routes/deliveryBoyRoutes');
-const analyticsRoutes = require('./routes/analyticsRoutes');
 const deliveryAuthRoutes = require('./routes/deliveryAuthRoutes');
 const restaurantAuthRoutes = require('./routes/restaurantAuthRoutes');
 const ratingRoutes = require('./routes/ratingRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
+const balanceRoutes = require('./routes/balanceRoutes');
 
 app.use(
   helmet({
@@ -35,8 +35,6 @@ app.use(
           "'self'",
           'http://localhost:5000',
           'https://moodbite-food-delivery.onrender.com',
-          'https://cdn.jsdelivr.net',
-          'https://unpkg.com',
           'https://api.razorpay.com',
           'https://*.razorpay.com',
           'https://checkout.razorpay.com'
@@ -66,7 +64,7 @@ app.use(
           "'self'",
           'https://checkout.razorpay.com',
           'https://*.razorpay.com'
-        ]
+        ],
       }
     }
   })
@@ -111,11 +109,11 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/delivery-boys', deliveryBoyRoutes);
-app.use('/api/analytics', analyticsRoutes);
 app.use('/api/delivery', deliveryAuthRoutes);
 app.use('/api/restaurant', restaurantAuthRoutes);
 app.use('/api/ratings', ratingRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/balance', balanceRoutes);
 
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*"); // or your frontend URL

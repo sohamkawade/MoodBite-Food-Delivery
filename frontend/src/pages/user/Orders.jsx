@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ordersAPI, ratingAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 import RatingModal from '../../components/RatingModal';
@@ -13,9 +14,11 @@ import {
   MdRestaurant,
   MdFastfood,
   MdStar,
+  MdAccountBalance,
 } from 'react-icons/md';
 
 const Orders = () => {
+  const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState({ q: '', status: 'all' });
@@ -151,15 +154,24 @@ const Orders = () => {
   return (
     <div className="min-h-screen backcolor pt-14 md:pt-16">
       <div className="max-w-6xl mx-auto px-4 py-6 md:py-8 lg:py-8">
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 md:gap-4 mb-5 md:mb-6">
+        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3 lg:gap-4 mb-5 lg:mb-6">
           <div>
             <h1 className="text-2xl md:text-3xl lg:text-3xl font-bold text-gray-900">My Orders</h1>
-            
           </div>
-          <div className="flex flex-col sm:flex-row gap-2 md:gap-3 w-full md:w-auto">
-            <div className="flex gap-2 md:gap-3 w-full">
-              <input className="border rounded-lg px-3 py-2 text-sm md:text-base flex-1" placeholder="Search by ID or name" value={filter.q} onChange={e=>setFilter(f=>({...f,q:e.target.value}))} />
-              <select className="border rounded-lg px-3 py-2 text-sm md:text-base" value={filter.status} onChange={e=>setFilter(f=>({...f,status:e.target.value}))}>
+          
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full lg:w-auto">
+            <div className="flex gap-2 sm:gap-3 w-full">
+              <input 
+                className="border rounded-lg px-2 py-1.5 text-xs sm:text-sm flex-1 min-w-0" 
+                placeholder="Search by ID or name" 
+                value={filter.q} 
+                onChange={e=>setFilter(f=>({...f,q:e.target.value}))} 
+              />
+              <select 
+                className="border rounded-lg px-2 py-1.5 text-xs sm:text-sm min-w-[120px]" 
+                value={filter.status} 
+                onChange={e=>setFilter(f=>({...f,status:e.target.value}))}
+              >
                 <option value="all">All</option>
                 <option value="pending">Pending</option>
                 <option value="confirmed">Confirmed</option>
@@ -169,6 +181,15 @@ const Orders = () => {
                 <option value="cancelled">Cancelled</option>
               </select>
             </div>
+            
+            <button
+              onClick={() => navigate('/user/transactions')}
+              className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-md hover:shadow-lg text-xs sm:text-sm font-medium whitespace-nowrap"
+            >
+              <MdAccountBalance size={14} />
+              <span className="hidden sm:inline">Transaction History</span>
+              <span className="sm:hidden">Transactions</span>
+            </button>
           </div>
         </div>
         {filtered.length === 0 ? (
@@ -218,7 +239,7 @@ const Orders = () => {
                   <div className="mt-3 md:mt-4 flex flex-col sm:flex-row gap-2 md:gap-3">
                     <button onClick={()=>setViewOrder(o)} className="flex-1 px-3 py-2 text-xs md:text-sm rounded-lg bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600">View</button>
                     {(['pending','confirmed'].includes(o.status)) && (
-                      <button onClick={async()=>{ try { await ordersAPI.cancelMyOrder(o._id); toast.success('Order cancelled'); const res=await ordersAPI.getMyOrders(); if(res.success) setOrders(res.data||[]);} catch(e){ toast.error('Failed to cancel'); } }} className="flex-1 px-3 py-2 text-xs md:text-sm border border-red-300 text-red-600 rounded-lg hover:bg-red-50">Cancel</button>
+                      <button onClick={async()=>{ try { await ordersAPI.cancelMyOrder(o._id); toast.success('Order cancelled - Refund will be processed automatically'); const res=await ordersAPI.getMyOrders(); if(res.success) setOrders(res.data||[]);} catch(e){ toast.error('Failed to cancel'); } }} className="flex-1 px-3 py-2 text-xs md:text-sm border border-red-300 text-red-600 rounded-lg hover:bg-red-50">Cancel</button>
                     )}
                     {o.status === 'delivered' && !isOrderRated(o._id) && !ratingStatusLoading[o._id] && (
                       <button 

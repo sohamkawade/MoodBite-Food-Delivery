@@ -8,6 +8,7 @@ const MenuItem = require('../models/MenuItem');
 const { generateToken } = require('../utils/generateToken');
 const { ADMIN_VERIFICATION_CODE } = require('../config/keys');
 const { sendPasswordResetOTPEmail, generateOTP } = require('../utils/emailService');
+const { decryptBankDetails } = require('../utils/encryption');
 
 const signup = async (req, res) => {
     try {
@@ -219,7 +220,10 @@ const getProfile = async (req, res) => {
                     status: admin.status,
                     permissions: admin.permissions,
                     lastLogin: admin.lastLogin,
-                    createdAt: admin.createdAt
+                    createdAt: admin.createdAt,
+                    bankDetails: admin.bankDetails ? decryptBankDetails(admin.bankDetails) : null,
+                    balance: admin.balance,
+                    totalEarnings: admin.totalEarnings
                 }
             }
         });

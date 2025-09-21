@@ -197,7 +197,86 @@ const restaurantSchema = new mongoose.Schema({
   },
   resetOTPExpiry: {
     type: Date
-  }
+  },
+  // Bank Details for Payment Distribution (Required for Restaurant)
+  bankDetails: {
+    accountNumber: {
+      type: String,
+      trim: true,
+      required: [true, 'Bank account number is required for restaurant']
+    },
+    ifscCode: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      required: [true, 'IFSC code is required for restaurant']
+    },
+    accountHolderName: {
+      type: String,
+      trim: true,
+      required: [true, 'Account holder name is required for restaurant']
+    },
+    bankName: {
+      type: String,
+      trim: true,
+      required: [true, 'Bank name is required for restaurant']
+    },
+    isVerified: {
+      type: Boolean,
+      default: false
+    }
+  },
+  // Balance Tracking for Restaurant
+  balance: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  totalEarnings: {
+    type: Number,
+    default: 0
+  },
+  pendingAmount: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+  totalOrders: {
+    type: Number,
+    default: 0
+  },
+  lastPayout: {
+    type: Date,
+    default: null
+  },
+  nextPayoutDate: {
+    type: Date,
+    default: null
+  },
+  recentTransactions: [{
+    date: {
+      type: Date,
+      default: Date.now
+    },
+    type: {
+      type: String,
+      enum: ['order_payment', 'commission', 'payout', 'adjustment'],
+      default: 'order_payment'
+    },
+    amount: {
+      type: Number,
+      required: true
+    },
+    status: {
+      type: String,
+      enum: ['pending', 'completed', 'failed'],
+      default: 'pending'
+    },
+    description: {
+      type: String,
+      default: ''
+    }
+  }]
 }, {
   timestamps: true
 });

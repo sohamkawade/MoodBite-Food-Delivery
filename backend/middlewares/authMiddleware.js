@@ -150,4 +150,7 @@ const authenticateRestaurant = async (req, res, next) => {
   }
 };
 
-module.exports = { authenticate, authenticateAdmin, authenticateRestaurant };
+// Alias for authenticate function
+const authenticateToken = authenticate;
+
+module.exports = { authenticate, authenticateToken, authenticateAdmin, authenticateRestaurant };
