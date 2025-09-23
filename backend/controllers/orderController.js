@@ -732,7 +732,7 @@ const deliveryUpdateStatus = async (req, res) => {
     }
     
     
-    // If status is being updated to 'out_for_delivery', generate and send OTP via WhatsApp
+    // If status is being updated to 'out_for_delivery', generate delivery OTP (no WhatsApp)
     if (status === 'out_for_delivery' && order.status !== 'out_for_delivery') {
       // Generate 6-digit OTP
       const otp = String(Math.floor(100000 + Math.random() * 900000));
@@ -744,19 +744,6 @@ const deliveryUpdateStatus = async (req, res) => {
         attempts: 0
       };
       order.deliveryVerified = false;
-
-      // Send OTP via WhatsApp
-      try {
-        const { sendWhatsAppMessage, ensureReady } = require('../services/whatsappService');
-        const ready = await ensureReady();
-        if (ready) {
-          let waNumber = order.customerPhone || '';
-          if (/^\d{10}$/.test(waNumber)) waNumber = '91' + waNumber;
-          await sendWhatsAppMessage(waNumber, `MoodBite Delivery: Your food is on the way. Share OTP - ${otp} with the Partner to enjoy your order.`);
-        }
-      } catch (_) {
-        // Do not fail status update if WhatsApp send fails; rider can use resend or manual call
-      }
     }
     
     if (status) order.status = status;
@@ -835,7 +822,7 @@ const verifyDeliveryOTP = async (req, res) => {
   }
 };
 
-// DELIVERY: resend delivery OTP (via WhatsApp)
+// DELIVERY: regenerate delivery OTP (no WhatsApp)
 const resendDeliveryOTP = async (req, res) => {
   try {
     const riderId = req.user._id;
@@ -846,20 +833,8 @@ const resendDeliveryOTP = async (req, res) => {
 
     const otp = String(Math.floor(100000 + Math.random() * 900000));
     order.deliveryOTP = { code: otp, isUsed: false, attempts: 0 };
-
-    try {
-      const { sendWhatsAppMessage, ensureReady } = require('../services/whatsappService');
-      const ready = await ensureReady();
-      if (!ready) return res.status(503).json({ success: false, message: 'WhatsApp not ready. Please relink or try again.' });
-      let waNumber = order.customerPhone || '';
-      if (/^\d{10}$/.test(waNumber)) waNumber = '91' + waNumber;
-      await sendWhatsAppMessage(waNumber, `MoodBite Delivery: Your food is on the way 🚴. Share OTP - ${otp} with the Partner to enjoy your order.`);
-    } catch (e) {
-      return res.status(500).json({ success: false, message: 'Failed to resend delivery OTP via WhatsApp' });
-    }
-
     await order.save();
-    return res.json({ success: true, message: 'New OTP sent successfully', data: { method: 'whatsapp' } });
+    return res.json({ success: true, message: 'New OTP generated successfully', data: { method: 'code_only' } });
   } catch (error) {
     return res.status(500).json({ success: false, message: 'Failed to resend OTP' });
   }

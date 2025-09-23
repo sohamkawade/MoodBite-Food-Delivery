@@ -951,6 +951,8 @@ export const deliveryAuthAPI = {
     return response;
   },
 
+  
+
   // Get delivery boy profile
   getProfile: async () => {
     const token = localStorage.getItem('deliveryToken');
@@ -1081,7 +1083,9 @@ export const ratingAPI = {
   // Get restaurant ratings (for restaurant owners)
   getRestaurantRatings: async (restaurantId, params = {}) => {
     const queryString = new URLSearchParams(params).toString();
-    return restaurantApiRequest(`/ratings/restaurant/${restaurantId}?${queryString}`);
+    return apiRequest(`/ratings/restaurant/${restaurantId}?${queryString}`, {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('restaurantToken')}` }
+    });
   },
 
   // Get rating statistics (for admin)

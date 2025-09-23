@@ -15,6 +15,8 @@ import {
   MdFastfood,
   MdStar,
   MdAccountBalance,
+  MdSecurity,
+  MdContentCopy,
 } from 'react-icons/md';
 
 const Orders = () => {
@@ -28,6 +30,7 @@ const Orders = () => {
   const [ratingLoading, setRatingLoading] = useState(false);
   const [ratedOrders, setRatedOrders] = useState(new Set());
   const [ratingStatusLoading, setRatingStatusLoading] = useState({});
+  const [copiedOrderId, setCopiedOrderId] = useState(null);
 
   const loadOrders = async () => {
     try {
@@ -50,16 +53,8 @@ const Orders = () => {
       setLoading(false);
     }
   };
-
-  // Auto-refresh orders every 30 seconds for real-time updates
   useEffect(() => {
     loadOrders();
-    
-    const interval = setInterval(() => {
-      loadOrders();
-    }, 30000); // 30 seconds
-
-    return () => clearInterval(interval);
   }, []);
 
   const filtered = useMemo(() => {
@@ -319,6 +314,18 @@ const Orders = () => {
                 })}
               </div>
             </div>
+            {viewOrder.status === 'out_for_delivery' && viewOrder.deliveryOTP?.code && (
+              <div className="mt-2 p-2 border border-green-200 rounded-md bg-green-50">
+                <div className="flex items-center gap-1 mb-1">
+                  <MdSecurity className="text-green-600" size={14} />
+                  <div className="text-[11px] font-semibold text-green-900">Delivery Verification</div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="text-lg font-mono tracking-wider text-green-700 select-all">{viewOrder.deliveryOTP.code}</div>
+                </div>
+                <div className="text-[10px] text-green-800 mt-1">Share this secure code with your delivery partner to complete your order.</div>
+              </div>
+            )}
             
                          {/* Rating Section for Delivered Orders */}
              {viewOrder.status === 'delivered' && (

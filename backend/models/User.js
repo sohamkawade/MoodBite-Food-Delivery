@@ -184,21 +184,6 @@ const userSchema = new mongoose.Schema({
   resetOTPExpiry: {
     type: Date
   }
-  ,
-  // WhatsApp OTP fields
-  waOtpCode: {
-    type: String,
-    select: false
-  },
-  waOtpExpiresAt: {
-    type: Date,
-    select: false
-  },
-  waOtpAttempts: {
-    type: Number,
-    default: 0,
-    select: false
-  }
 }, {
   timestamps: true
 });

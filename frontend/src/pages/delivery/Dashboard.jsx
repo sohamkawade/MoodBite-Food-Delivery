@@ -696,7 +696,7 @@ const DeliveryDashboard = () => {
                               setCurrentOrder(order);
                               setShowOTPModal(true);
                               setOtpMessage(
-                                "Please enter the OTP received by customer via Whatsapp to complete delivery."
+                                "Please enter the OTP shown by the customer to complete delivery."
                               );
                             }}
                             className="px-3 sm:px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-xs sm:text-sm font-medium flex items-center justify-center space-x-1"
@@ -728,7 +728,7 @@ const DeliveryDashboard = () => {
       </div>
 
       {showOTPModal && currentOrder && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl p-4 sm:p-6 max-w-sm w-full shadow-xl">
             <div className="text-center mb-4">
               <div className="mx-auto w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mb-3 shadow-lg">
@@ -796,16 +796,6 @@ const DeliveryDashboard = () => {
                 </button>
               </div>
 
-              <div className="text-center pt-3 border-t border-gray-100">
-                <div className="flex items-center justify-center space-x-2 text-xs text-gray-500 mb-1">
-                  <MdSecurity className="text-blue-500" size={14} />
-                  <span>OTP sent via Whatsapp to customer</span>
-                </div>
-                <p className="text-xs text-gray-400">
-                  Customer will receive OTP when order status becomes "Out for
-                  Delivery"
-                </p>
-              </div>
             </div>
           </div>
         </div>
