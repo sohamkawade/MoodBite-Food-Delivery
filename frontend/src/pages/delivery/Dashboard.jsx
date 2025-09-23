@@ -61,10 +61,6 @@ const DeliveryDashboard = () => {
         deliveryBoysAPI.getBalance(),
       ]);
 
-      console.log("Profile Response:", profileRes);
-      console.log("Orders Response:", ordersRes);
-      console.log("Earnings Response:", earningsRes);
-
       if (profileRes.success) {
         setDeliveryBoy(profileRes.data);
         setIsOnline(profileRes.data.online || false);
@@ -96,8 +92,6 @@ const DeliveryDashboard = () => {
   };
 
   const calculateStats = (ordersData, earningsDataParam = null) => {
-    console.log("Calculating stats for orders:", ordersData);
-    console.log("Using earnings data:", earningsDataParam || earningsData);
     
     const totalDeliveries = ordersData.length;
     const completedDeliveries = ordersData.filter(
@@ -176,9 +170,7 @@ const DeliveryDashboard = () => {
       averageRating: averageRating.toFixed(1),
     };
 
-    console.log("Calculated stats:", calculatedStats);
-    console.log("Today earnings calculation:", todayEarnings);
-    console.log("Weekly earnings calculation:", weeklyEarnings);
+
     setStats(calculatedStats);
   };
 
@@ -227,24 +219,17 @@ const DeliveryDashboard = () => {
 
   const handleOrderStatusUpdate = async (orderId, newStatus) => {
     try {
-      console.log("Updating order status:", orderId, newStatus);
       
       // Check if delivery token exists
       const deliveryToken = localStorage.getItem('deliveryToken');
       if (!deliveryToken) {
         alert("You are not logged in. Please login again.");
         return;
-      }
-      
-      console.log("Delivery token exists:", !!deliveryToken);
+      }     
       
       const response = await orderAPI.updateDeliveryStatus(orderId, { status: newStatus });
-      
-      console.log("API Response:", response);
-      
+            
       if (response.success) {
-        console.log("Order status updated successfully:", response);
-        // Refresh the data to show updated status
         await fetchDeliveryData();
         alert(`Order status updated to ${newStatus} successfully!`);
       } else {
@@ -310,7 +295,7 @@ const DeliveryDashboard = () => {
       const response = await orderAPI.resendDeliveryOTP(currentOrder._id);
 
       if (response.success) {
-        setOtpMessage("🔄 New OTP sent successfully! Check customer's Email.");
+        setOtpMessage("New OTP sent successfully.");
         setOtpInput("");
       } else {
         setOtpError(response.message || "Failed to resend OTP");
@@ -711,7 +696,7 @@ const DeliveryDashboard = () => {
                               setCurrentOrder(order);
                               setShowOTPModal(true);
                               setOtpMessage(
-                                "Please enter the OTP received by customer via Email to complete delivery."
+                                "Please enter the OTP received by customer via Whatsapp to complete delivery."
                               );
                             }}
                             className="px-3 sm:px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-xs sm:text-sm font-medium flex items-center justify-center space-x-1"
@@ -753,7 +738,6 @@ const DeliveryDashboard = () => {
                 Delivery Verification
               </h3>
               <p className="text-gray-600 text-xs sm:text-sm">
-                Order #{currentOrder._id.slice(-8)} •{" "}
                 {currentOrder.restaurant?.name || "Restaurant"}
               </p>
             </div>
@@ -815,7 +799,7 @@ const DeliveryDashboard = () => {
               <div className="text-center pt-3 border-t border-gray-100">
                 <div className="flex items-center justify-center space-x-2 text-xs text-gray-500 mb-1">
                   <MdSecurity className="text-blue-500" size={14} />
-                  <span>OTP sent via Email to customer</span>
+                  <span>OTP sent via Whatsapp to customer</span>
                 </div>
                 <p className="text-xs text-gray-400">
                   Customer will receive OTP when order status becomes "Out for

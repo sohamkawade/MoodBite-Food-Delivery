@@ -86,19 +86,7 @@ const adminSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Admin'
   },
-  // Password Reset
-  resetToken: {
-    type: String
-  },
-  resetTokenExpiry: {
-    type: Date
-  },
-  resetOTP: {
-    type: String
-  },
-  resetOTPExpiry: {
-    type: Date
-  },
+  
   // Bank Details for Platform/Admin (Optional - can be filled manually)
   bankDetails: {
     accountNumber: {
@@ -161,7 +149,27 @@ const adminSchema = new mongoose.Schema({
       type: String,
       default: ''
     }
-  }]
+  }],
+  
+  // Notification Preferences
+  notificationPreferences: {
+    push: {
+      type: Boolean,
+      default: true
+    },
+    orderUpdates: {
+      type: Boolean,
+      default: true
+    },
+    marketing: {
+      type: Boolean,
+      default: true
+    },
+    system: {
+      type: Boolean,
+      default: true
+    }
+  }
 
 }, {
   timestamps: true

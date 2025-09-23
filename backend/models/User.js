@@ -142,6 +142,7 @@ const userSchema = new mongoose.Schema({
       default: false
     }
   }],
+  
   // Notification Preferences
   notifications: {
     email: {
@@ -159,8 +160,17 @@ const userSchema = new mongoose.Schema({
     marketing: {
       type: Boolean,
       default: true
+    },
+    orderUpdates: {
+      type: Boolean,
+      default: true
+    },
+    system: {
+      type: Boolean,
+      default: true
     }
   },
+  
   // Password Reset
   resetToken: {
     type: String
@@ -173,6 +183,21 @@ const userSchema = new mongoose.Schema({
   },
   resetOTPExpiry: {
     type: Date
+  }
+  ,
+  // WhatsApp OTP fields
+  waOtpCode: {
+    type: String,
+    select: false
+  },
+  waOtpExpiresAt: {
+    type: Date,
+    select: false
+  },
+  waOtpAttempts: {
+    type: Number,
+    default: 0,
+    select: false
   }
 }, {
   timestamps: true

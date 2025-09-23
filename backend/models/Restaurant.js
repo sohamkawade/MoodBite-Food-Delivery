@@ -276,7 +276,27 @@ const restaurantSchema = new mongoose.Schema({
       type: String,
       default: ''
     }
-  }]
+  }],
+  
+  // Notification Preferences
+  notificationPreferences: {
+    push: {
+      type: Boolean,
+      default: true
+    },
+    orderUpdates: {
+      type: Boolean,
+      default: true
+    },
+    marketing: {
+      type: Boolean,
+      default: true
+    },
+    system: {
+      type: Boolean,
+      default: true
+    }
+  }
 }, {
   timestamps: true
 });

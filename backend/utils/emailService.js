@@ -39,89 +39,7 @@ async function sendEmail({ to, subject, html, text }) {
 	}
 }
 
-async function sendDeliveryOTP(email, customerName, orderId, otp, restaurantName) {
-	try {
-		const subject = `🔐 MoodBite Delivery Verification - Order #${orderId}`;
-		
-		const htmlContent = `
-		<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9fa;">
-			<div style="background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-				<div style="text-align: center; margin-bottom: 30px;">
-					<h1 style="color: #e74c3c; margin: 0; font-size: 28px;">🍽️ MoodBite</h1>
-					<p style="color: #7f8c8d; margin: 5px 0;">Food Delivery Service</p>
-				</div>
-				
-				<div style="background-color: #e8f5e8; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
-					<h2 style="color: #27ae60; margin: 0 0 15px 0; font-size: 20px;">🚚 Delivery Verification</h2>
-					<p style="color: #2c3e50; margin: 0; line-height: 1.6;">
-						Hi <strong>${customerName}</strong>!<br>
-						Your order <strong>#${orderId}</strong> from <strong>${restaurantName}</strong> is out for delivery.
-					</p>
-				</div>
-				
-				<div style="background-color: #fff3cd; padding: 25px; border-radius: 8px; text-align: center; margin-bottom: 25px;">
-					<h3 style="color: #856404; margin: 0 0 15px 0; font-size: 18px;">🔢 Your Delivery OTP</h3>
-					<div style="background-color: #ffffff; padding: 15px; border: 2px dashed #f39c12; border-radius: 8px; display: inline-block;">
-						<span style="font-size: 32px; font-weight: bold; color: #e67e22; letter-spacing: 5px;">${otp}</span>
-					</div>
-					<p style="color: #856404; margin: 15px 0 0 0; font-size: 14px;">
-						Enter this OTP when your delivery partner arrives
-					</p>
-				</div>
-				
-				<div style="background-color: #d1ecf1; padding: 20px; border-radius: 8px; margin-bottom: 25px;">
-					<h4 style="color: #0c5460; margin: 0 0 10px 0; font-size: 16px;">📋 Order Details</h4>
-					<p style="color: #0c5460; margin: 5px 0; font-size: 14px;">
-						<strong>Order ID:</strong> ${orderId}<br>
-						<strong>Restaurant:</strong> ${restaurantName}<br>
-						<strong>Customer:</strong> ${customerName}
-					</p>
-				</div>
-				
-				<div style="text-align: center; padding-top: 20px; border-top: 1px solid #ecf0f1;">
-					<p style="color: #7f8c8d; margin: 0; font-size: 12px;">
-						This OTP is valid for one-time use only.<br>
-						Thank you for choosing MoodBite! 🎉
-					</p>
-				</div>
-			</div>
-		</div>
-		`;
-
-		const emailResult = await sendEmail({ to: email, subject, html: htmlContent });
-		
-		if (emailResult.success) {
-			return {
-				success: true,
-				message: 'OTP sent successfully via Email',
-				method: 'email',
-				data: {
-					email: email,
-					customerName: customerName,
-					orderId: orderId,
-					restaurantName: restaurantName
-				}
-			};
-		} else {
-			throw new Error('Failed to send email OTP');
-		}
-
-	} catch (error) {
-		console.error('❌ Email OTP sending error:', error.message);
-		return {
-			success: true,
-			message: 'OTP sent via development fallback (Email error)',
-			method: 'development',
-			data: { 
-				otp, 
-				email: email,
-				fallback: true,
-				error: error.message,
-				note: 'Email service error occurred, using development mode'
-			}
-		};
-	}
-}
+// Delivery OTP via email removed; kept password reset mailers.
 
 function generateOTP() {
 	const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -556,4 +474,4 @@ async function sendPasswordResetEmail(email, userName, resetLink, userType = 'us
 	}
 }
 
-module.exports = { sendEmail, sendApprovalEmail, sendRejectionEmail, buildApprovalEmail, buildRejectionEmail, sendDeliveryOTP, generateOTP, validateOTP, getServiceStatus, sendPasswordResetEmail, buildPasswordResetEmail, sendPasswordResetOTPEmail, buildPasswordResetOTPEmail };
+module.exports = { sendEmail, sendApprovalEmail, sendRejectionEmail, buildApprovalEmail, buildRejectionEmail, generateOTP, validateOTP, getServiceStatus, sendPasswordResetEmail, buildPasswordResetEmail, sendPasswordResetOTPEmail, buildPasswordResetOTPEmail };

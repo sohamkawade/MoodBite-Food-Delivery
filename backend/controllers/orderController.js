@@ -160,10 +160,8 @@ const placeOrder = async (req, res) => {
           }
         });
         await transaction.save();
-        console.log(`Transaction created for order ${order.orderId}: ₹${total}`);
       } catch (transactionError) {
         console.error('Error creating transaction:', transactionError);
-        // Don't fail the order if transaction creation fails
       }
     }
 
@@ -183,12 +181,7 @@ const placeOrder = async (req, res) => {
           null, // deliveryBoyId will be assigned later
           normalizedPaymentMethod
         );
-        
-        if (distributionResult.success) {
-          console.log('Payment distributed successfully:', distributionResult.distributions);
-        } else {
-          console.error('Payment distribution failed:', distributionResult.error);
-        }
+
       } catch (distError) {
         console.error('Payment distribution error:', distError);
         // Don't fail the order if distribution fails
@@ -331,7 +324,6 @@ const adminUpdateOrder = async (req, res) => {
           
           await refundTransaction.save();
           
-          console.log(`Refund transaction created for admin-cancelled order ${order.orderId}: ₹${order.total}`);
           
         } catch (refundError) {
           console.error('Error creating refund transaction:', refundError);
@@ -371,7 +363,6 @@ const adminUpdateOrder = async (req, res) => {
             deliveryAddress: order.deliveryAddress
           }
         });
-        console.log(`Notification sent to delivery boy ${rider.name} for order ${order.orderId}`);
       } catch (notifError) {
         console.error('Failed to create delivery boy notification:', notifError);
       }
@@ -394,14 +385,8 @@ const adminUpdateOrder = async (req, res) => {
             order.paymentMethod
           );
           
-          if (distributionResult.success) {
-            console.log('Payment distribution updated with delivery boy (manual):', distributionResult.distributions);
-          } else {
-            console.error('Payment distribution update failed (manual):', distributionResult.error);
-          }
         } catch (distError) {
           console.error('Payment distribution update error (manual):', distError);
-          // Don't fail the assignment if distribution update fails
         }
       }
 
@@ -421,7 +406,6 @@ const adminUpdateOrder = async (req, res) => {
             // Mark pending delivery as assigned
             order.pendingDeliveryStatus = 'assigned';
             await order.save();
-            console.log('Pending COD delivery amount automatically distributed to delivery boy:', deliveryTransfer);
           }
         } catch (codError) {
           console.error('Pending COD delivery transfer error:', codError);
@@ -480,11 +464,6 @@ const cancelMyOrder = async (req, res) => {
         });
         
         await refundTransaction.save();
-        
-        console.log(`Refund transaction created for order ${order.orderId}: ₹${order.total}`);
-        
-        // Note: In production, you would integrate with Razorpay refund API here
-        // For now, we're just creating the transaction record
         
       } catch (refundError) {
         console.error('Error creating refund transaction:', refundError);
@@ -581,7 +560,6 @@ const adminAutoAssignDeliveryBoy = async (req, res) => {
           deliveryAddress: order.deliveryAddress
         }
       });
-      console.log(`Notification sent to delivery boy ${chosen.name} for order ${order.orderId}`);
     } catch (notifError) {
       console.error('Failed to create delivery boy notification:', notifError);
     }
@@ -605,13 +583,11 @@ const adminAutoAssignDeliveryBoy = async (req, res) => {
         );
         
         if (distributionResult.success) {
-          console.log('Payment distribution updated with delivery boy:', distributionResult.distributions);
         } else {
           console.error('Payment distribution update failed:', distributionResult.error);
         }
       } catch (distError) {
         console.error('Payment distribution update error:', distError);
-        // Don't fail the assignment if distribution update fails
       }
     }
 
@@ -631,7 +607,6 @@ const adminAutoAssignDeliveryBoy = async (req, res) => {
           // Mark pending delivery as assigned
           order.pendingDeliveryStatus = 'assigned';
           await order.save();
-          console.log('Pending COD delivery amount automatically distributed to delivery boy (auto):', deliveryTransfer);
         }
       } catch (codError) {
         console.error('Pending COD delivery transfer error (auto):', codError);
@@ -699,7 +674,6 @@ const restaurantUpdateOrderStatus = async (req, res) => {
           
           await refundTransaction.save();
           
-          console.log(`Refund transaction created for restaurant-cancelled order ${order.orderId}: ₹${order.total}`);
           
         } catch (refundError) {
           console.error('Error creating refund transaction:', refundError);
@@ -758,14 +732,10 @@ const deliveryUpdateStatus = async (req, res) => {
     }
     
     
-    // If status is being updated to 'out_for_delivery', generate and send OTP
+    // If status is being updated to 'out_for_delivery', generate and send OTP via WhatsApp
     if (status === 'out_for_delivery' && order.status !== 'out_for_delivery') {
-      const { sendDeliveryOTP, generateOTP } = require('../utils/emailService');
-      
       // Generate 6-digit OTP
-      const otp = generateOTP();
-      
-
+      const otp = String(Math.floor(100000 + Math.random() * 900000));
       
       // Store OTP in order
       order.deliveryOTP = {
@@ -774,23 +744,18 @@ const deliveryUpdateStatus = async (req, res) => {
         attempts: 0
       };
       order.deliveryVerified = false;
-      
-      // Send OTP via Email
-      const deliveryResult = await sendDeliveryOTP(
-        order.customerEmail,
-        order.customerName,
-        order.orderId,
-        otp,
-        order.restaurant?.name || 'Restaurant'
-      );
-      
-      if (!deliveryResult.success) {
-        console.error(`❌ Failed to send delivery OTP for order ${order.orderId}:`, deliveryResult);
-        return res.status(500).json({ 
-          success: false, 
-          message: 'Failed to send delivery OTP',
-          error: deliveryResult.message
-        });
+
+      // Send OTP via WhatsApp
+      try {
+        const { sendWhatsAppMessage, ensureReady } = require('../services/whatsappService');
+        const ready = await ensureReady();
+        if (ready) {
+          let waNumber = order.customerPhone || '';
+          if (/^\d{10}$/.test(waNumber)) waNumber = '91' + waNumber;
+          await sendWhatsAppMessage(waNumber, `MoodBite Delivery: Your food is on the way. Share OTP - ${otp} with the Partner to enjoy your order.`);
+        }
+      } catch (_) {
+        // Do not fail status update if WhatsApp send fails; rider can use resend or manual call
       }
     }
     
@@ -822,178 +787,81 @@ const deliveryUpdateStatus = async (req, res) => {
     await order.save();
     
     
-    res.json({ 
-      success: true, 
-      message: 'Delivery status updated', 
-      data: order,
-      otpSent: status === 'out_for_delivery' && order.status !== 'out_for_delivery',
-      otpMethod: status === 'out_for_delivery' ? 'email' : undefined
-    });
+    res.json({ success: true, message: 'Delivery status updated', data: order });
   } catch (error) {
     console.error('Delivery update status error:', error);
     res.status(500).json({ success: false, message: 'Failed to update delivery status' });
   }
 };
 
-// DELIVERY: verify delivery OTP
 const verifyDeliveryOTP = async (req, res) => {
   try {
     const riderId = req.user._id;
     const { id } = req.params;
     const { otp } = req.body || {};
-    
-    if (!otp) {
-      return res.status(400).json({ success: false, message: 'OTP is required' });
-    }
-    
+    if (!otp) return res.status(400).json({ success: false, message: 'OTP is required' });
+
     const order = await Order.findOne({ _id: id, assignedDeliveryBoy: riderId }).populate('restaurant');
-    if (!order) {
-      return res.status(404).json({ success: false, message: 'Order not found' });
-    }
-    
-    if (order.status !== 'out_for_delivery') {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Order must be out for delivery to verify OTP' 
-      });
-    }
-    
-    if (!order.deliveryOTP || !order.deliveryOTP.code) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'No OTP found for this order' 
-      });
-    }
-    
-    // Check OTP attempts
-    if (order.deliveryOTP.attempts >= 3) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Maximum OTP attempts exceeded. Please contact support.' 
-      });
-    }
-    
-    // Validate OTP
-    const { validateOTP } = require('../utils/emailService');
-    const validation = validateOTP(otp, order.deliveryOTP.code, order.deliveryOTP.isUsed);
-    
-    if (!validation.valid) {
-      // Increment attempts
-      order.deliveryOTP.attempts += 1;
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (order.status !== 'out_for_delivery') return res.status(400).json({ success: false, message: 'Order must be out for delivery to verify OTP' });
+    if (!order.deliveryOTP || !order.deliveryOTP.code) return res.status(400).json({ success: false, message: 'No OTP found for this order' });
+
+    const isValid = String(otp) === String(order.deliveryOTP.code) && !order.deliveryOTP.isUsed;
+    if (!isValid) {
+      // Track attempts for auditing but do not expire by attempts
+      order.deliveryOTP.attempts = (order.deliveryOTP.attempts || 0) + 1;
       await order.save();
-      
-      return res.status(400).json({ 
-        success: false, 
-        message: validation.message 
-      });
+      return res.status(400).json({ success: false, message: 'Invalid OTP' });
     }
-    
+
     // OTP verified successfully - mark order as delivered
     order.status = 'delivered';
     order.deliveryVerified = true;
     order.actualDeliveryTime = new Date();
-    order.deliveryOTP.isUsed = true; // Mark OTP as used
-    
+    order.deliveryOTP.isUsed = true;
     await order.save();
-    
-    // Update delivery boy status from 'busy' to 'available'
+
+    // Update delivery boy status to available and mark assignment complete (best-effort)
     try {
       const DeliveryBoy = require('../models/DeliveryBoy');
-      await DeliveryBoy.findByIdAndUpdate(riderId, { 
-        status: 'available',
-        lastDeliveryCompleted: new Date()
-      });
-      
-      // Also update DeliveryAssignment status
+      await DeliveryBoy.findByIdAndUpdate(riderId, { status: 'available', lastDeliveryCompleted: new Date() });
       const DeliveryAssignment = require('../models/DeliveryAssignment');
-      await DeliveryAssignment.findOneAndUpdate(
-        { order: order._id },
-        { 
-          status: 'completed',
-          completedAt: new Date()
-        }
-      );
-    } catch (updateError) {
-      console.error('Failed to update delivery boy status or assignment:', updateError);
-      // Don't fail the delivery if status update fails
-    }
-    
-    res.json({ 
-      success: true, 
-      message: 'Delivery verified successfully! Order marked as delivered.', 
-      data: order 
-    });
-    
+      await DeliveryAssignment.findOneAndUpdate({ order: order._id }, { status: 'completed', completedAt: new Date() });
+    } catch (_) {}
+
+    return res.json({ success: true, message: 'Delivery verified successfully! Order marked as delivered.', data: order });
   } catch (error) {
-    console.error('Delivery OTP verification error:', error);
-    res.status(500).json({ success: false, message: 'Failed to verify delivery OTP' });
+    return res.status(500).json({ success: false, message: 'Failed to verify delivery OTP' });
   }
 };
 
-// DELIVERY: resend delivery OTP
+// DELIVERY: resend delivery OTP (via WhatsApp)
 const resendDeliveryOTP = async (req, res) => {
   try {
     const riderId = req.user._id;
     const { id } = req.params;
-    
-    const order = await Order.findOne({ _id: id, assignedDeliveryBoy: riderId }).populate('restaurant');
-    if (!order) {
-      return res.status(404).json({ success: false, message: 'Order not found' });
-    }
-    
-    if (order.status !== 'out_for_delivery') {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Order must be out for delivery to resend OTP' 
-      });
-    }
-    
-    const { sendDeliveryOTP, generateOTP } = require('../utils/emailService');
-    
-    // Generate new OTP
-    const otp = generateOTP();
-    
+    const order = await Order.findOne({ _id: id, assignedDeliveryBoy: riderId });
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (order.status !== 'out_for_delivery') return res.status(400).json({ success: false, message: 'Order must be out for delivery to resend OTP' });
 
-    
-    // Update OTP in order
-    order.deliveryOTP = {
-      code: otp,
-      isUsed: false,
-      attempts: 0
-    };
-    
-    // Send new OTP via Email
-    const deliveryResult = await sendDeliveryOTP(
-      order.customerEmail,
-      order.customerName,
-      order.orderId,
-      otp,
-      order.restaurant?.name || 'Restaurant'
-    );
-    
-    if (!deliveryResult.success) {
-      console.error(`❌ Failed to resend delivery OTP for order ${order.orderId}:`, deliveryResult);
-      return res.status(500).json({ 
-        success: false, 
-        message: 'Failed to resend delivery OTP',
-        error: deliveryResult.message
-      });
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    order.deliveryOTP = { code: otp, isUsed: false, attempts: 0 };
+
+    try {
+      const { sendWhatsAppMessage, ensureReady } = require('../services/whatsappService');
+      const ready = await ensureReady();
+      if (!ready) return res.status(503).json({ success: false, message: 'WhatsApp not ready. Please relink or try again.' });
+      let waNumber = order.customerPhone || '';
+      if (/^\d{10}$/.test(waNumber)) waNumber = '91' + waNumber;
+      await sendWhatsAppMessage(waNumber, `MoodBite Delivery: Your food is on the way 🚴. Share OTP - ${otp} with the Partner to enjoy your order.`);
+    } catch (e) {
+      return res.status(500).json({ success: false, message: 'Failed to resend delivery OTP via WhatsApp' });
     }
-    
+
     await order.save();
-    
-    res.json({ 
-      success: true, 
-      message: 'New OTP sent successfully', 
-      data: { 
-        message: `OTP resent to customer via ${deliveryResult.method}`,
-        method: deliveryResult.method
-      }
-    });
-    
+    return res.json({ success: true, message: 'New OTP sent successfully', data: { method: 'whatsapp' } });
   } catch (error) {
-    console.error('Resend OTP error:', error);
-    res.status(500).json({ success: false, message: 'Failed to resend OTP' });
+    return res.status(500).json({ success: false, message: 'Failed to resend OTP' });
   }
 };
 

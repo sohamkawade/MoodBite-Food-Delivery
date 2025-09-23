@@ -24,6 +24,9 @@ const restaurantAuthRoutes = require('./routes/restaurantAuthRoutes');
 const ratingRoutes = require('./routes/ratingRoutes');
 const paymentRoutes = require('./routes/paymentRoutes');
 const balanceRoutes = require('./routes/balanceRoutes');
+const whatsappRoutes = require('./routes/whatsappRoutes');
+ 
+ 
 
 app.use(
   helmet({
@@ -114,6 +117,9 @@ app.use('/api/restaurant', restaurantAuthRoutes);
 app.use('/api/ratings', ratingRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/balance', balanceRoutes);
+app.use('/api/whatsapp', whatsappRoutes);
+ 
+ 
 
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*"); // or your frontend URL
