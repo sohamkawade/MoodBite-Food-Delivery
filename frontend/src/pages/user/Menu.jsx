@@ -226,90 +226,47 @@ const Menu = () => {
                 : "grid-cols-1"
             }`}>
               {sortedMenu.map(item => (
-                <div key={item.id} className={`bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow`}>
-                  <div className="relative">
-                    <img
-                      src={item.image}
-                      className={`w-full h-48 md:h-56 object-cover rounded-t-lg`}
-                      alt={item.name}
-                    />
-                    {item.isTrending && (
-                      <div className="absolute top-2 left-2">
-                        <span className="bg-orange-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
-                          <MdTrendingUp size={12} />
-                          Trending
-                        </span>
-                      </div>
-                    )}
-                    {item.offer && (
-                      <div className="absolute bottom-2 left-2">
-                        <span className="bg-red-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">{item.offer}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className={`p-3 md:p-4`}>
+                <div key={item.id} className="relative rounded-2xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-lg hover:scale-[1.02] transition-all duration-300 min-h-[20rem] sm:min-h-[22rem]">
+                  {/* Background image */}
+                  <img src={item.image} className="absolute inset-0 w-full h-full object-cover" alt={item.name} />
+                  {/* Bottom gradient */}
+                  <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-black/90 via-black/70 to-transparent" />
+                  {/* Badges */}
+                  {item.isTrending && (
+                    <div className="absolute top-2 left-2 z-10">
+                      <span className="bg-gray-800/40 text-white backdrop-blur-sm border border-white/20 text-[10px] font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1"><MdTrendingUp size={12} /> Trending</span>
+                    </div>
+                  )}
+                  {item.offer && (
+                    <div className="absolute bottom-2 left-2 z-10">
+                      <span className="bg-red-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">{item.offer}</span>
+                    </div>
+                  )}
+                  {/* Content */}
+                  <div className="relative z-10 p-3 md:p-4 flex flex-col justify-end h-full text-white">
                     <div className="flex justify-between items-start mb-1">
                       <div className="pr-2 flex-1">
-                        <h3 className="text-sm md:text-base font-semibold text-gray-900 truncate">{item.name}</h3>
-                        <p className="text-xs md:text-sm text-gray-500">{item.category}</p>
+                        <h3 className="text-sm md:text-base font-semibold truncate">{item.name}</h3>
+                        <p className="text-xs md:text-sm text-white/90">{item.category}</p>
                       </div>
-                      <span className="text-sm md:text-base font-bold text-orange-600">₹{item.price}</span>
+                      <span className="text-sm md:text-base font-bold">₹{item.price}</span>
                     </div>
-                    <div className="flex items-center gap-2 md:gap-3 text-xs text-gray-700 mb-2">
-                      {typeof item.prepTime === 'number' && (
-                        <span className="inline-flex items-center gap-1">
-                          <MdTimer size={12} className="md:hidden" />
-                          <MdTimer size={14} className="hidden md:block" />
-                          {item.prepTime} min
-                        </span>
-                      )}
-                      {item.spiceLevel && (
-                        <span className="inline-flex items-center gap-1">
-                          <MdLocalFireDepartment size={12} className="text-red-500 md:hidden" />
-                          <MdLocalFireDepartment size={14} className="text-red-500 hidden md:block" />
-                          <span className="capitalize">{item.spiceLevel.replace('_',' ')}</span>
-                        </span>
-                      )}
-                      <span className="inline-flex items-center gap-1">
-                        <MdStar size={12} className="text-yellow-500 md:hidden" />
-                        <MdStar size={14} className="text-yellow-500 hidden md:block" />
-                        {Number(item.rating || 0).toFixed(1)}
-                      </span>
+                    <div className="flex items-center gap-2 md:gap-3 text-xs text-white/90 mb-2">
+                      {typeof item.prepTime === 'number' && (<span className="inline-flex items-center gap-1"><MdTimer size={14} />{item.prepTime} min</span>)}
+                      {item.spiceLevel && (<span className="inline-flex items-center gap-1"><MdLocalFireDepartment size={14} className="text-red-300" /><span className="capitalize">{item.spiceLevel.replace('_',' ')}</span></span>)}
+                      <span className="inline-flex items-center gap-1"><MdStar size={14} className="text-yellow-300" />{Number(item.rating || 0).toFixed(1)}</span>
                     </div>
-
-                    <div className="mb-2">
-                      {item.isAvailable ? (
-                        <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">Available</span>
-                      ) : (
-                        <span className="text-xs text-red-600 bg-red-50 px-2 py-1 rounded-full">Out of Stock</span>
-                      )}
-                    </div>
-
                     <div className="flex items-center justify-between">
-                      <button
-                        onClick={() => setQuickViewItem(item)}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50"
-                      >
-                        <svg className="w-3 h-3 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
+                      <button onClick={() => setQuickViewItem(item)} className="inline-flex items-center gap-1 px-2 py-1 text-xs border border-white/70 text-white rounded hover:bg-white/10">
+                        <svg className="w-3 h-3 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                         <span className="hidden sm:inline">Quick View</span>
                         <span className="sm:hidden">View</span>
                       </button>
-
                       <div className="flex items-center">
                         {!item.isAvailable ? (
-                          <span className="px-2 py-1.5 md:px-2.5 md:py-1.5 rounded-md text-xs bg-gray-300 text-gray-600 cursor-not-allowed">
-                            Out of Stock
-                          </span>
+                          <span className="px-2 py-1.5 md:px-2.5 md:py-1.5 rounded-md text-xs bg-gray-300 text-gray-600 cursor-not-allowed">Out of Stock</span>
                         ) : (
-                          <button 
-                            onClick={() => addToCart(item)}
-                            className="px-2 py-1.5 md:px-2.5 md:py-1.5 rounded-md transition-all duration-200 text-xs font-medium bg-orange-500 text-white hover:bg-orange-600 hover:shadow-lg transform hover:scale-105"
-                          >
-                            Add to Cart
-                          </button>
+                          <button onClick={() => addToCart(item)} className="px-2 py-1.5 md:px-2.5 md:py-1.5 rounded-md transition-all duration-200 text-xs font-medium bg-orange-500 text-white hover:bg-orange-600 hover:shadow-lg transform hover:scale-105">Add to Cart</button>
                         )}
                       </div>
                     </div>

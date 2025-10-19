@@ -226,125 +226,61 @@ const Offers = () => {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
               {offerItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-white rounded-lg shadow-sm hover:shadow-xl hover:scale-105 transition-all duration-300 overflow-hidden border border-gray-100 cursor-pointer group"
-                >
-                  <div className="relative">
-                    <img
-                      src={item.image}
-                      className="w-full h-48 md:h-56 object-cover"
-                      alt={item.name}
-                    />
-                    {item.isTrending && (
-                      <div className="absolute top-2 left-2">
-                        <span className="bg-orange-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1 animate-bounce">
-                          <MdTrendingUp size={12} />
-                          Trending
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Discount / Countdown */}
-                    {((item.discountPercentage || 0) > 0 ||
-                      item.offer ||
-                      item.isNewArrival) && (
-                      <div className="absolute top-2 right-2">
-                        <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full animate-pulse">
-                          {item.discountPercentage > 0
-                            ? `${item.discountPercentage}% OFF`
-                            : item.offer || "New Arrival"}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Countdown timer for 30%+ discount - bottom right */}
-                    {item.discountPercentage > 30 && countdown && (
-                      <div className="absolute bottom-2 right-2">
-                        <span className="bg-black/80 text-white text-sm font-bold px-3 py-1.5 rounded-lg shadow-lg">
-                          Ends in {countdown}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="p-3 md:p-4">
-                    <div className="flex items-center justify-between mb-1">
-                      <h5 className="text-sm md:text-base font-semibold text-gray-900 truncate pr-2">
-                        {item.name}
-                      </h5>
-                      <div className="text-right">
-                        {item.discountPercentage > 0 && (
-                          <div className="text-xs text-gray-500 line-through">
-                            ₹{item.price}
-                          </div>
-                        )}
-                        <div className="text-sm md:text-lg font-bold text-orange-600">
-                          ₹
-                          {item.discountPercentage > 0
-                            ? Math.round(
-                                item.price -
-                                  (item.price * item.discountPercentage) / 100
-                              )
-                            : item.price}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 md:gap-3 text-xs text-gray-700 mb-2">
-                      {typeof item.prepTime === "number" && (
-                        <span className="inline-flex items-center gap-1">
-                          <MdTimer size={12} className="md:hidden" />
-                          <MdTimer size={14} className="hidden md:block" />
-                          {item.prepTime} min
-                        </span>
-                      )}
-                      {item.spiceLevel && (
-                        <span className="inline-flex items-center gap-1">
-                          <MdLocalFireDepartment
-                            size={12}
-                            className="text-red-500 md:hidden"
-                          />
-                          <MdLocalFireDepartment
-                            size={14}
-                            className="text-red-500 hidden md:block"
-                          />
-                          <span className="capitalize">
-                            {item.spiceLevel.replace("_", " ")}
-                          </span>
-                        </span>
-                      )}
-                      {item.foodType && (
-                        <span className="inline-flex items-center gap-1">
-                          <span className="capitalize text-xs">
-                            🍽 {item.foodType.replace("_", " ")}
-                          </span>
-                        </span>
-                      )}
-                      <span className="inline-flex items-center gap-1">
-                        <MdStar size={12} className="text-yellow-500 md:hidden" />
-                        <MdStar size={14} className="text-yellow-500 hidden md:block" />
-                        {Number(item.rating || 0).toFixed(1)}
+                <div key={item.id} className="relative rounded-2xl overflow-hidden shadow-sm hover:shadow-lg hover:scale-[1.02] transition-all duration-300 border border-gray-100 group min-h-[20rem] sm:min-h-[22rem] cursor-pointer">
+                  {/* Background image */}
+                  <img src={item.image} className="absolute inset-0 w-full h-full object-cover" alt={item.name} />
+                  {/* Bottom gradient */}
+                  <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-black/90 via-black/70 to-transparent" />
+                  {/* Badges */}
+                  {item.isTrending && (
+                    <div className="absolute top-2 left-2 z-10">
+                      <span className="bg-gray-800/40 text-white backdrop-blur-sm border border-white/20 text-[10px] font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                        <MdTrendingUp size={12} /> Trending
                       </span>
                     </div>
-
+                  )}
+                  {((item.discountPercentage || 0) > 0 || item.offer || item.isNewArrival) && (
+                    <div className="absolute top-2 right-2 z-10">
+                      <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                        {item.discountPercentage > 0 ? `${item.discountPercentage}% OFF` : (item.offer || "New Arrival")}
+                      </span>
+                    </div>
+                  )}
+                  {item.discountPercentage > 30 && countdown && (
+                    <div className="absolute bottom-2 right-2 z-10">
+                      <span className="bg-black/80 text-white text-sm font-bold px-3 py-1.5 rounded-lg shadow-lg">Ends in {countdown}</span>
+                    </div>
+                  )}
+                  {/* Content */}
+                  <div className="relative z-10 p-3 md:p-4 flex flex-col justify-end h-full text-white">
+                    <div className="flex items-center justify-between mb-1">
+                      <h5 className="text-sm md:text-base font-semibold truncate pr-2">{item.name}</h5>
+                      <div className="text-right">
+                        {item.discountPercentage > 0 && (
+                          <div className="text-xs text-white/80 line-through">₹{item.price}</div>
+                        )}
+                        <div className="text-sm md:text-lg font-bold">₹{item.discountPercentage > 0 ? Math.round(item.price - (item.price * item.discountPercentage) / 100) : item.price}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 md:gap-3 text-xs text-white/90 mb-2">
+                      {typeof item.prepTime === "number" && (
+                        <span className="inline-flex items-center gap-1"><MdTimer size={14} />{item.prepTime} min</span>
+                      )}
+                      {item.spiceLevel && (
+                        <span className="inline-flex items-center gap-1"><MdLocalFireDepartment size={14} className="text-red-300" /><span className="capitalize">{item.spiceLevel.replace("_"," ")}</span></span>
+                      )}
+                      {item.foodType && (
+                        <span className="inline-flex items-center gap-1"><span className="capitalize">🍽 {item.foodType.replace("_"," ")}</span></span>
+                      )}
+                      <span className="inline-flex items-center gap-1"><MdStar size={14} className="text-yellow-300" />{Number(item.rating || 0).toFixed(1)}</span>
+                    </div>
                     <div className="flex items-center justify-between">
-                      <button
-                        onClick={() => setQuickViewItem(item)}
-                        className="inline-flex items-center gap-1 px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50"
-                      >
-                        <MdZoomIn size={12} className="md:hidden" />
-                        <MdZoomIn size={14} className="hidden md:block" />
+                      <button onClick={() => setQuickViewItem(item)} className="inline-flex items-center gap-1 px-2 py-1 text-xs border border-white/70 text-white rounded hover:bg-white/10">
+                        <MdZoomIn size={14} />
                         <span className="hidden sm:inline">Quick View</span>
                         <span className="sm:hidden">View</span>
                       </button>
-
-                      <button
-                        onClick={() => addToCart(item.id)}
-                        className="px-2 py-1.5 md:px-3 md:py-2 rounded-md transition-all duration-200 text-xs font-medium bg-orange-500 text-white hover:bg-orange-600 hover:shadow-lg transform hover:scale-110 active:scale-95"
-                      >
-                        Add to Cart
-                      </button>
+                      <button onClick={() => addToCart(item.id)} className="px-2 py-1.5 md:px-3 md:py-2 rounded-md transition-all duration-200 text-xs font-medium bg-orange-500 text-white hover:bg-orange-600 hover:shadow-lg transform hover:scale-110 active:scale-95">Add to Cart</button>
                     </div>
                   </div>
                 </div>

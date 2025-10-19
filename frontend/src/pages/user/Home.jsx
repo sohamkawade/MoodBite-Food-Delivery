@@ -145,7 +145,7 @@ const Home = () => {
     };
 
     updateCountdown();
-    const interval = setInterval(updateCountdown, 60000); // Update every minute
+    const interval = setInterval(updateCountdown, 60000); 
     
     return () => clearInterval(interval);
   }, []);
@@ -260,110 +260,71 @@ const Home = () => {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
                 {trending.map((item, index) => (
-                  <div key={index} className="bg-white rounded-lg shadow-sm hover:shadow-lg hover:scale-[1.02] transition-all duration-300 overflow-hidden border border-gray-100 group">
-                    <div className="relative">
-                      <img src={item.image} className="w-full h-48 sm:h-56 object-cover group-hover:scale-105 transition-transform duration-300" alt={item.name} />
-                      
-                      {/* Trending Badge - Top Left */}
-                      <div className="absolute top-2 left-2">
-                        <span className="bg-orange-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1 shadow-lg">
-                          <MdTrendingUp size={12} />
-                          Trending
-                        </span>
-                      </div>
-                      
-                      {/* Offer Badge - Bottom Left (only if offer exists) */}
-                      {item.offer && (
-                        <div className="absolute bottom-2 left-2">
-                          <span className="bg-red-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow-lg">{item.offer}</span>
-                        </div>
-                      )}
-                      
-                      {/* Discount Badge - Top Right (only if discount exists) */}
-                      {item.discountPercentage > 0 && (
-                        <div className="absolute top-0 right-0">
-                          <div className="bg-gradient-to-br from-red-500 to-red-600 text-white text-xs font-bold px-3 py-1 transform rotate-12 origin-bottom-left shadow-lg">
-                            {item.discountPercentage}% OFF
-                          </div>
-                        </div>
-                      )}
-                      {/* Countdown timer for 30%+ discount - bottom right */}
-                      {item.discountPercentage > 30 && countdown && (
-                        <div className="absolute bottom-2 right-2">
-                          <span className="bg-black/80 text-white text-sm font-bold px-3 py-1.5 rounded-lg shadow-lg">
-                            Ends in {countdown}
-                          </span>
-                        </div>
-                      )}
+                  <div key={index} className="relative rounded-2xl overflow-hidden shadow-sm hover:shadow-lg hover:scale-[1.02] transition-all duration-300 border border-gray-100 group min-h-[20rem] sm:min-h-[22rem]">
+                    {/* Background image at bottom layer */}
+                    <img src={item.image} className="absolute inset-0 w-full h-full object-cover" alt={item.name} />
+                    {/* dark gradient only at bottom to improve legibility */}
+                    <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-black/90 via-black/70 to-transparent" />
+                    {/* Top badges */}
+                    <div className="absolute top-2 left-2 z-10">
+                      <span className="bg-gray-800/40 text-white backdrop-blur-sm border border-white/20 text-[10px] font-semibold px-2 py-0.5 rounded-full inline-flex items-center gap-1 shadow">
+                        <MdTrendingUp size={12} /> Trending
+                      </span>
                     </div>
+                    {item.discountPercentage > 0 && (
+                      <div className="absolute top-0 right-0 z-10">
+                        <div className="bg-gradient-to-br from-red-500 to-red-600 text-white text-xs font-bold px-3 py-1 transform rotate-12 origin-bottom-left shadow-lg">
+                          {item.discountPercentage}% OFF
+                        </div>
+                      </div>
+                    )}
+                    {item.offer && (
+                      <div className="absolute bottom-2 left-2 z-10">
+                        <span className="bg-red-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow-lg">{item.offer}</span>
+                      </div>
+                    )}
+                    {item.discountPercentage > 30 && countdown && (
+                      <div className="absolute bottom-2 right-2 z-10">
+                        <span className="bg-black/80 text-white text-sm font-bold px-3 py-1.5 rounded-lg shadow-lg">Ends in {countdown}</span>
+                      </div>
+                    )}
 
-                    <div className="p-3">
+                    {/* Foreground content */}
+                    <div className="relative z-10 p-3 flex flex-col justify-end h-full">
                       <div className="flex items-center justify-between mb-1">
                         <div className="pr-2">
-                          <h5 className="text-base font-semibold text-gray-900 truncate">{item.name}</h5>
-                          <p className="text-[11px] text-gray-500">{item.category}</p>
+                          <h5 className="text-base font-semibold text-white truncate">{item.name}</h5>
+                          <p className="text-[11px] text-white/90">{item.category}</p>
                         </div>
                         <div className="text-right">
                           {item.discountPercentage > 0 && (
-                            <div className="text-[11px] text-gray-500 line-through">₹{item.price}</div>
+                            <div className="text-[11px] text-white/80 line-through">₹{item.price}</div>
                           )}
-                          <div className="text-lg font-bold text-orange-600">
+                          <div className="text-lg font-bold text-white">
                             ₹{item.discountPercentage > 0 ? Math.round(item.price - (item.price * item.discountPercentage / 100)) : item.price}
                           </div>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-3 text-[11px] text-gray-700 mb-1.5">
+                      <div className="flex items-center gap-3 text-[11px] text-white/90 mb-2">
                         {typeof item.prepTime === 'number' && (
-                          <span className="inline-flex items-center gap-1">
-                            <MdTimer size={14} />
-                            {item.prepTime} min
-                          </span>
+                          <span className="inline-flex items-center gap-1"><MdTimer size={14} />{item.prepTime} min</span>
                         )}
                         {item.spiceLevel && (
-                          <span className="inline-flex items-center gap-1">
-                            <MdLocalFireDepartment 
-                              size={14} 
-                              className={`${
-                                item.spiceLevel === 'mild' ? 'text-green-500' :
-                                item.spiceLevel === 'medium' ? 'text-orange-500' :
-                                item.spiceLevel === 'spicy' ? 'text-red-500' :
-                                item.spiceLevel === 'extra_spicy' ? 'text-red-600' : 'text-red-500'
-                              }`} 
-                            />
-                            <span className="capitalize">{item.spiceLevel.replace('_',' ')}</span>
-                          </span>
+                          <span className="inline-flex items-center gap-1"><MdLocalFireDepartment size={14} className={`${item.spiceLevel === 'mild' ? 'text-green-300' : item.spiceLevel === 'medium' ? 'text-orange-300' : item.spiceLevel === 'spicy' ? 'text-red-300' : 'text-red-400'}`} /><span className="capitalize">{item.spiceLevel.replace('_',' ')}</span></span>
                         )}
                         {item.foodType && (
-                          <span className="inline-flex items-center gap-1">
-                            <span className="capitalize">🍽 {item.foodType.replace('_',' ')}</span>
-                          </span>
+                          <span className="inline-flex items-center gap-1"><span className="capitalize">🍽 {item.foodType.replace('_',' ')}</span></span>
                         )}
-                        <span className="inline-flex items-center gap-1">
-                          <MdStar size={14} className="text-yellow-500" />
-                          {Number(item.rating || 0).toFixed(1)}
-                        </span>
+                        <span className="inline-flex items-center gap-1"><MdStar size={14} className="text-yellow-300" />{Number(item.rating || 0).toFixed(1)}</span>
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <button
-                          onClick={() => setQuickViewItem(item)}
-                          className="inline-flex items-center gap-1 px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                          </svg>
+                        <button onClick={() => setQuickViewItem(item)} className="inline-flex items-center gap-1 px-2 py-1 text-xs border border-white/70 text-white rounded hover:bg-white/10"> 
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                           Quick View
                         </button>
-
-                        <div className="flex items-center">
-                          <button 
-                            onClick={() => handleAddToCartClick(item.id)}
-                            className="px-3 py-2 rounded-md transition-all duration-200 text-xs font-medium bg-orange-500 text-white hover:bg-orange-600 hover:shadow-lg transform hover:scale-105 group-hover:ring-2 group-hover:ring-orange-200"
-                          >
-                            Add to Cart
-                          </button>
-                        </div>
+                        <button onClick={() => handleAddToCartClick(item.id)} className="px-3 py-2 rounded-md transition-all duration-200 text-xs font-medium bg-orange-500 text-white hover:bg-orange-600 hover:shadow-lg transform hover:scale-105">Add to Cart</button>
                       </div>
                     </div>
                   </div>
@@ -403,106 +364,56 @@ const Home = () => {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
                 {specials.map((item, index) => (
-                  <div key={index} className="bg-white rounded-lg shadow-sm hover:shadow-lg hover:scale-[1.02] transition-all duration-300 overflow-hidden border border-gray-100 group">
-                    <div className="relative">
-                      <img src={item.image} className="w-full h-48 sm:h-56 object-cover group-hover:scale-105 transition-transform duration-300" alt={item.name} />
-                      
-                      {/* New Arrival Badge - Top Left */}
-                      <div className="absolute top-2 left-2">
-                        <span className="bg-purple-500 text-white text-[13px] font-semibold px-2 py-0.5 rounded-full shadow-lg">
-                          New
-                        </span>
-                      </div>
-                      
-                      {/* Offer Badge - Bottom Left (only if offer exists) */}
-                      {item.offer && (
-                        <div className="absolute bottom-2 left-2">
-                          <span className="bg-red-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow-lg">{item.offer}</span>
-                        </div>
-                      )}
+                  <div key={index} className="relative rounded-2xl overflow-hidden shadow-sm hover:shadow-lg hover:scale-[1.02] transition-all duration-300 border border-gray-100 group min-h-[20rem] sm:min-h-[22rem]">
+                    <img src={item.image} className="absolute inset-0 w-full h-full object-cover" alt={item.name} />
+                    <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-black/90 via-black/70 to-transparent" />
 
-                      {/* Discount Badge - Top Right (only if discount exists) */}
-                      {item.discountPercentage > 0 && (
-                        <div className="absolute top-0 right-0">
-                          <div className="bg-gradient-to-br from-red-500 to-red-600 text-white text-xs font-bold px-3 py-1 transform rotate-12 origin-bottom-left shadow-lg">
-                            {item.discountPercentage}% OFF
-                          </div>
-                        </div>
-                      )}
-                      {/* Countdown timer for 30%+ discount - bottom right */}
-                      {item.discountPercentage > 30 && countdown && (
-                        <div className="absolute bottom-2 right-2">
-                          <span className="bg-black/80 text-white text-sm font-bold px-3 py-1.5 rounded-lg shadow-lg">
-                            Ends in {countdown}
-                          </span>
-                        </div>
-                      )}
+                    <div className="absolute top-2 left-2 z-10">
+                      <span className="bg-gray-800/40 text-white backdrop-blur-sm border border-white/20 text-[10px] font-semibold px-2 py-0.5 rounded-full shadow">New</span>
                     </div>
-                    <div className="p-3">
+                    {item.discountPercentage > 0 && (
+                      <div className="absolute top-0 right-0 z-10">
+                        <div className="bg-gradient-to-br from-red-500 to-red-600 text-white text-xs font-bold px-3 py-1 transform rotate-12 origin-bottom-left shadow-lg">{item.discountPercentage}% OFF</div>
+                      </div>
+                    )}
+                    {item.offer && (
+                      <div className="absolute bottom-2 left-2 z-10">
+                        <span className="bg-red-500 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full shadow-lg">{item.offer}</span>
+                      </div>
+                    )}
+                    {item.discountPercentage > 30 && countdown && (
+                      <div className="absolute bottom-2 right-2 z-10">
+                        <span className="bg-black/80 text-white text-sm font-bold px-3 py-1.5 rounded-lg shadow-lg">Ends in {countdown}</span>
+                      </div>
+                    )}
+
+                    <div className="relative z-10 p-3 flex flex-col justify-end h-full">
                       <div className="flex items-center justify-between mb-1">
                         <div className="pr-2">
-                          <h5 className="text-base font-semibold text-gray-900 truncate">{item.name}</h5>
-                          <p className="text-[11px] text-gray-500">{item.category}</p>
+                          <h5 className="text-base font-semibold text-white truncate">{item.name}</h5>
+                          <p className="text-[11px] text-white/90">{item.category}</p>
                         </div>
                         <div className="text-right">
                           {item.discountPercentage > 0 && (
-                            <div className="text-[11px] text-gray-500 line-through">₹{item.price}</div>
+                            <div className="text-[11px] text-white/80 line-through">₹{item.price}</div>
                           )}
-                          <div className="text-lg font-bold text-orange-600">
+                          <div className="text-lg font-bold text-white">
                             ₹{item.discountPercentage > 0 ? Math.round(item.price - (item.price * item.discountPercentage / 100)) : item.price}
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 text-[11px] text-gray-700 mb-1.5">
-                        {typeof item.prepTime === 'number' && (
-                          <span className="inline-flex items-center gap-1">
-                            <MdTimer size={14} />
-                            {item.prepTime} min
-                          </span>
-                        )}
-                        {item.spiceLevel && (
-                          <span className="inline-flex items-center gap-1">
-                            <MdLocalFireDepartment
-                              size={14}
-                              className={`${
-                                item.spiceLevel === 'mild' ? 'text-green-500' :
-                                item.spiceLevel === 'medium' ? 'text-orange-500' :
-                                item.spiceLevel === 'spicy' ? 'text-red-500' :
-                                item.spiceLevel === 'extra_spicy' ? 'text-red-600' : 'text-red-500'
-                              }`}
-                            />
-                            <span className="capitalize">{item.spiceLevel.replace('_',' ')}</span>
-                          </span>
-                        )}
-                        {item.foodType && (
-                          <span className="inline-flex items-center gap-1">
-                            <span className="text-xs">🍽 {item.foodType.replace('_',' ')}</span>
-                          </span>
-                        )}
-                        <span className="inline-flex items-center gap-1">
-                          <MdStar size={14} className="text-yellow-500" />
-                          {Number(item.rating || 0).toFixed(1)}
-                        </span>
+                      <div className="flex items-center gap-3 text-[11px] text-white/90 mb-2">
+                        {typeof item.prepTime === 'number' && (<span className="inline-flex items-center gap-1"><MdTimer size={14} />{item.prepTime} min</span>)}
+                        {item.spiceLevel && (<span className="inline-flex items-center gap-1"><MdLocalFireDepartment size={14} className={`${item.spiceLevel === 'mild' ? 'text-green-300' : item.spiceLevel === 'medium' ? 'text-orange-300' : item.spiceLevel === 'spicy' ? 'text-red-300' : 'text-red-400'}`} /><span className="capitalize">{item.spiceLevel.replace('_',' ')}</span></span>)}
+                        {item.foodType && (<span className="inline-flex items-center gap-1"><span className="text-xs capitalize">🍽 {item.foodType.replace('_',' ')}</span></span>)}
+                        <span className="inline-flex items-center gap-1"><MdStar size={14} className="text-yellow-300" />{Number(item.rating || 0).toFixed(1)}</span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <button
-                          onClick={() => setQuickViewItem(item)}
-                          className="inline-flex items-center gap-1 px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                          </svg>
+                        <button onClick={() => setQuickViewItem(item)} className="inline-flex items-center gap-1 px-2 py-1 text-xs border border-white/70 text-white rounded hover:bg-white/10">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                           Quick View
                         </button>
-
-                        <div className="flex items-center">
-                          <button 
-                            onClick={() => handleAddToCartClick(item.id)}
-                            className="px-3 py-2 rounded-md transition-all duration-200 text-xs font-medium bg-orange-500 text-white hover:bg-orange-600 hover:shadow-lg transform hover:scale-105 group-hover:ring-2 group-hover:ring-orange-200"
-                          >
-                            Add to Cart
-                          </button>
-                        </div>
+                        <button onClick={() => handleAddToCartClick(item.id)} className="px-3 py-2 rounded-md transition-all duration-200 text-xs font-medium bg-orange-500 text-white hover:bg-orange-600 hover:shadow-lg transform hover:scale-105">Add to Cart</button>
                       </div>
                     </div>
                   </div>
